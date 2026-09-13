@@ -3,6 +3,7 @@ export const prerender = true
 
 import Layout from "@/layouts/main.astro"
 import { DownloadButton } from "@/components/download-button"
+import DropMascot from "@/components/drop-mascot.astro"
 // Read the current release version from the updater feed at build time so the
 // site does not depend on files outside apps/site when deployed on its own.
 const RELEASE_FEED =
@@ -11,15 +12,6 @@ const version = await fetch(RELEASE_FEED)
   .then((r) => (r.ok ? r.text() : ""))
   .then((t) => t.match(/^version:\s*(.+)$/m)?.[1]?.trim())
   .catch(() => undefined)
-
-const wordmark = [
-  "_/\\/\\____/\\/\\__/\\/\\/\\/\\/\\/\\____/\\/\\/\\/\\/\\__/\\/\\/\\/\\/\\____/\\/\\/\\/\\/\\/\\__/\\/\\/\\/\\/\\___",
-  "_/\\/\\____/\\/\\__/\\____________/\\/\\__________/\\/\\____/\\/\\__/\\____________/\\/\\____/\\/\\_",
-  "_/\\/\\____/\\/\\__/\\/\\/\\/\\/\\______/\\/\\/\\/\\____/\\/\\/\\/\\/\\____/\\/\\/\\/\\/\\____/\\/\\/\\/\\/\\___",
-  "___/\\/\\/\\/\\____/\\/\\__________________/\\/\\__/\\/\\__________/\\/\\__________/\\/\\__/\\/\\___",
-  "_____/\\/\\______/\\/\\/\\/\\/\\/\\__/\\/\\/\\/\\/\\____/\\/\\__________/\\/\\/\\/\\/\\/\\__/\\/\\____/\\/\\_",
-  "____________________________________________________________________________________",
-].join("\n")
 
 const softwareSchema = {
   "@context": "https://schema.org",
@@ -85,10 +77,7 @@ const organizationSchema = {
     class="mx-auto flex max-w-xl flex-col items-start justify-center px-4 pt-32 pb-0 sm:px-8 sm:pt-40"
   >
     <div class="reveal mb-6 [animation-delay:80ms]">
-      <pre
-        role="img"
-        aria-label="Vesper"
-        class="inline-block text-[10px] leading-[1.08] tracking-[-0.03em] text-foreground">{wordmark}</pre>
+      <DropMascot class="block size-24" />
     </div>
 
     <h1
@@ -112,18 +101,35 @@ const organizationSchema = {
   <section class="screenshot-demo-section">
     <div class="screenshot-demo reveal [animation-delay:400ms]">
       <figure class="screenshot-demo__frame">
-        <picture>
-          <source srcset="/screenshots/hero-home.avif" type="image/avif" />
-          <img
-            src="/screenshots/hero-home.png"
-            alt="Vesper app, showing the detail page for a movie with friends watching activity on the right"
-            width="2000"
-            height="1280"
-            loading="eager"
-            decoding="async"
-            draggable="false"
-          />
-        </picture>
+        <video
+          class="screenshot-demo__bg"
+          autoplay
+          muted
+          loop
+          playsinline
+          disablepictureinpicture
+          preload="auto"
+          poster="/screenshots/hero-bg.webp"
+          aria-hidden="true"
+          tabindex="-1"
+        >
+          <source src="/screenshots/hero-bg.webm" type="video/webm" />
+          <source src="/screenshots/hero-bg.mp4" type="video/mp4" />
+        </video>
+        <div class="screenshot-demo__app">
+          <picture>
+            <source srcset="/screenshots/hero-home.avif" type="image/avif" />
+            <img
+              src="/screenshots/hero-home.png"
+              alt="Vesper app, showing the detail page for a movie with friends watching activity on the right"
+              width="2000"
+              height="1280"
+              loading="eager"
+              decoding="async"
+              draggable="false"
+            />
+          </picture>
+        </div>
       </figure>
     </div>
   </section>
@@ -146,14 +152,35 @@ const organizationSchema = {
       transform: perspective(2000px) rotateX(0deg);
     }
     .screenshot-demo__frame {
+      position: relative;
       margin: 0;
-      aspect-ratio: 2074 / 1280;
-      background: transparent;
+      padding: 3.6% 0 0;
+      background: #000;
       border-radius: 28px;
       overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 85%);
+      mask-image: linear-gradient(to bottom, #000 10%, transparent 85%);
     }
-    .screenshot-demo__frame picture,
-    .screenshot-demo__frame img {
+    /* Only the band above the app window is ever visible, so the loop is a 1280x180 crop of
+       the source. Sized off the frame width so it always covers the band plus the window's
+       top corner notches. */
+    .screenshot-demo__bg {
+      position: absolute;
+      inset: 0 0 auto;
+      width: 100%;
+      aspect-ratio: 1280 / 180;
+      object-fit: cover;
+      object-position: center top;
+      pointer-events: none;
+    }
+    .screenshot-demo__app {
+      position: relative;
+      aspect-ratio: 2000 / 1280;
+      border-radius: 20px 20px 0 0;
+      overflow: hidden;
+    }
+    .screenshot-demo__app picture,
+    .screenshot-demo__app img {
       display: block;
       width: 100%;
       height: 100%;
@@ -164,10 +191,6 @@ const organizationSchema = {
       -webkit-user-select: none;
       -webkit-user-drag: none;
       -webkit-touch-callout: none;
-    }
-    .screenshot-demo__frame img {
-      -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 85%);
-      mask-image: linear-gradient(to bottom, #000 10%, transparent 85%);
     }
     @media (max-width: 820px) {
       .screenshot-demo {
@@ -181,6 +204,13 @@ const organizationSchema = {
       .screenshot-demo {
         transform: none;
         transition: none;
+      }
+      .screenshot-demo__bg {
+        display: none;
+      }
+      .screenshot-demo__frame {
+        background: #000 url("/screenshots/hero-bg.webp") center top / 100% auto
+          no-repeat;
       }
     }
   </style>

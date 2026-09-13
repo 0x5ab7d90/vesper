@@ -1,0 +1,474 @@
+---
+// The tear drop mascot, matched 1:1 to the reference clip: a circle with two 45 degree tangents
+// meeting a small rounded tip, sized from measurements of the frames. The outline is centred on
+// its centroid so it can turn in place; the eyes live inside the body group, clipped by the same
+// outline, so they slide off the edge exactly like the reference. One five-second loop: it looks
+// up-right at rest, turns to glance down-left, then back, widens its eyes, and scans across to
+// the right again.
+interface Props {
+  class?: string
+  label?: string
+  /** Body colour. In dev, clicking the drop cycles through pastel variants on top of this. */
+  fill?: string
+}
+const { class: className, label = "Vesper", fill = "#A9CDF0" } = Astro.props
+
+const body =
+  "M-44.0 -39.8 A62.2 62.2 0 1 0 44.0 -39.8 L10.6 -73.2 A15.0 15.0 0 0 0 -10.6 -73.2 Z"
+---
+
+<span
+  class={className}
+  role="img"
+  aria-label={label}
+  data-drop-mascot
+  style={`--drop-fill: ${fill}`}
+>
+  <svg viewBox="0 0 170 170" class="drop" aria-hidden="true">
+    <defs>
+      <clipPath id="drop-clip"><path d={body}></path></clipPath>
+    </defs>
+    <g transform="translate(85 92)">
+      <!-- The outer "lean" and "gaze" groups are driven by the pointer; the inner groups carry
+           the idle loop. Keeping them separate means the two never fight over one transform. -->
+      <g class="drop__lean">
+        <g class="drop__body">
+          <path d={body} fill="#A9CDF0"></path>
+          <g clip-path="url(#drop-clip)">
+            <g class="drop__gaze">
+              <g class="drop__eyes">
+                <g class="drop__eye-wrap">
+                  <rect
+                    class="drop__eye drop__eye--l"
+                    x="-7.25"
+                    y="-16"
+                    width="14.5"
+                    height="32"
+                    rx="7.25"
+                    fill="#fff"></rect>
+                </g>
+                <g class="drop__eye-wrap">
+                  <rect
+                    class="drop__eye drop__eye--r"
+                    x="-7.25"
+                    y="-16"
+                    width="14.5"
+                    height="32"
+                    rx="7.25"
+                    fill="#fff"></rect>
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </svg>
+  <span class="drop__caption" aria-hidden="true"></span>
+</span>
+
+<style>
+  .drop {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  [data-drop-mascot] {
+    --lean-x: 0px;
+    --lean-y: 0px;
+    --tilt: 0deg;
+    --gaze-x: 0px;
+    --gaze-y: 0px;
+    --wide: 1;
+    position: relative;
+    display: block;
+  }
+  .drop__body > path {
+    fill: var(--drop-fill, #a9cdf0);
+    transition: fill 320ms ease;
+  }
+  /* Dev-only caption naming the current colour variant; shown briefly after each change. */
+  .drop__caption {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--drop-fill, #a9cdf0);
+    opacity: 0;
+    transform: translateY(-2px);
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
+    pointer-events: none;
+  }
+  .drop__caption.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  [data-drop-mascot].is-lab {
+    cursor: pointer;
+  }
+  .drop__lean {
+    transform: translate(var(--lean-x), var(--lean-y)) rotate(var(--tilt));
+  }
+  .drop__gaze {
+    transform: translate(var(--gaze-x), var(--gaze-y));
+  }
+  .drop__eye-wrap {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scale(var(--wide));
+    transition: transform 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .drop__body,
+  .drop__eyes,
+  .drop__eye {
+    animation-duration: 5s;
+    animation-iteration-count: infinite;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+  }
+  .drop__body {
+    animation-name: drop-body;
+  }
+  .drop__eyes {
+    animation-name: drop-eyes;
+  }
+  .drop__eye {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .drop__eye--l {
+    animation-name: drop-eye-l;
+  }
+  .drop__eye--r {
+    animation-name: drop-eye-r;
+  }
+
+  /* Body: rotation about the centroid, a touch of squash and stretch, and the small drift the
+     whole blob makes as it turns. Percentages are seconds over five. */
+  @keyframes drop-body {
+    0%,
+    14% {
+      transform: translate(0, 0) rotate(-23deg) scale(1, 1);
+    }
+    26%,
+    32% {
+      transform: translate(-11px, -1px) rotate(0deg) scale(1, 1.03);
+    }
+    44%,
+    46% {
+      transform: translate(-8.5px, -3px) rotate(-23deg) scale(1, 0.95);
+    }
+    52% {
+      transform: translate(-4.5px, 2px) rotate(-9deg) scale(1, 1);
+    }
+    58% {
+      transform: translate(-0.7px, 3.4px) rotate(-6deg) scale(1, 1);
+    }
+    66%,
+    68% {
+      transform: translate(0.6px, 1.8px) rotate(5deg) scale(1, 1);
+    }
+    76% {
+      transform: translate(-1.5px, 2px) rotate(-18deg) scale(1, 1);
+    }
+    98% {
+      transform: translate(-2px, 1.6px) rotate(-21deg) scale(1, 1);
+    }
+    100% {
+      transform: translate(0, 0) rotate(-23deg) scale(1, 1);
+    }
+  }
+
+  /* Eyes: where the pair sits inside the body, in body-local units. */
+  @keyframes drop-eyes {
+    0%,
+    14% {
+      transform: translate(31.7px, -8.3px);
+    }
+    26%,
+    32% {
+      transform: translate(-27px, 3.4px);
+    }
+    44%,
+    46% {
+      transform: translate(-4.3px, -27px);
+    }
+    52% {
+      transform: translate(1.7px, -21px);
+    }
+    58% {
+      transform: translate(0.5px, -24px);
+    }
+    66%,
+    68% {
+      transform: translate(-17px, -11.6px);
+    }
+    76% {
+      transform: translate(19.4px, -11.1px);
+    }
+    98% {
+      transform: translate(31.1px, -8.4px);
+    }
+    100% {
+      transform: translate(31.7px, -8.3px);
+    }
+  }
+
+  /* Each eye: spacing from the pair's centre, and the widening that happens at 2.4s. */
+  @keyframes drop-eye-l {
+    0%,
+    46% {
+      transform: translate(-14px, 0) scale(1);
+    }
+    52%,
+    98% {
+      transform: translate(-17px, 0) scale(1.55);
+    }
+    100% {
+      transform: translate(-14px, 0) scale(1);
+    }
+  }
+  @keyframes drop-eye-r {
+    0%,
+    46% {
+      transform: translate(14px, 0) scale(1);
+    }
+    52%,
+    98% {
+      transform: translate(17px, 0) scale(1.55);
+    }
+    100% {
+      transform: translate(14px, 0) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drop__body,
+    .drop__eyes,
+    .drop__eye {
+      animation: none;
+    }
+    .drop__body {
+      transform: rotate(-23deg);
+    }
+    .drop__eyes {
+      transform: translate(31.7px, -8.3px);
+    }
+    .drop__eye--l {
+      transform: translate(-14px, 0);
+    }
+    .drop__eye--r {
+      transform: translate(14px, 0);
+    }
+  }
+</style>
+
+<script>
+  // Pointer tracking. While the pointer is moving, the idle loop winds back to its rest pose and
+  // the eyes and tilt follow the cursor instead. Once the pointer has been still for a while, or
+  // leaves the page, the gaze eases home and the loop picks up again from the start.
+  const REST_EYE_X = 31.7
+  const REST_EYE_Y = -8.3
+  const IDLE_AFTER_MS = 2500
+  const REWIND_MS = 350
+
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches
+
+  for (const el of document.querySelectorAll<HTMLElement>(
+    "[data-drop-mascot]"
+  )) {
+    if (reduceMotion) continue
+    // Looked up lazily: the CSS animations may not have started when this runs.
+    let loop: Animation[] = []
+    const getLoop = (): Animation[] =>
+      loop.length ? loop : (loop = el.getAnimations({ subtree: true }))
+
+    let tracking = false
+    let lastMove = 0
+    let raf = 0
+    // targets and shown values: gaze x/y (body units), tilt (deg), lean x/y (px)
+    const target = { gx: 0, gy: 0, tilt: 0, lx: 0, ly: 0 }
+    const shown = { gx: 0, gy: 0, tilt: 0, lx: 0, ly: 0 }
+
+    const paint = (): void => {
+      el.style.setProperty("--gaze-x", `${shown.gx.toFixed(2)}px`)
+      el.style.setProperty("--gaze-y", `${shown.gy.toFixed(2)}px`)
+      el.style.setProperty("--tilt", `${shown.tilt.toFixed(2)}deg`)
+      el.style.setProperty("--lean-x", `${shown.lx.toFixed(2)}px`)
+      el.style.setProperty("--lean-y", `${shown.ly.toFixed(2)}px`)
+    }
+
+    const rewind = (): Promise<void> =>
+      new Promise((resolve) => {
+        // Reverse the loop back to time 0 so the takeover starts from the rest pose.
+        const start = performance.now()
+        const from = getLoop().map((a) => Number(a.currentTime ?? 0) % 5000)
+        getLoop().forEach((a) => a.pause())
+        const step = (now: number): void => {
+          const k = Math.min(1, (now - start) / REWIND_MS)
+          const e = 1 - Math.pow(1 - k, 3)
+          getLoop().forEach((a, i) => {
+            a.currentTime = from[i] * (1 - e)
+          })
+          if (k < 1) requestAnimationFrame(step)
+          else resolve()
+        }
+        requestAnimationFrame(step)
+      })
+
+    const tick = (): void => {
+      raf = 0
+      const k = 0.16
+      shown.gx += (target.gx - shown.gx) * k
+      shown.gy += (target.gy - shown.gy) * k
+      shown.tilt += (target.tilt - shown.tilt) * k
+      shown.lx += (target.lx - shown.lx) * k
+      shown.ly += (target.ly - shown.ly) * k
+      paint()
+
+      if (tracking && performance.now() - lastMove > IDLE_AFTER_MS) release()
+
+      const settled =
+        Math.abs(target.gx - shown.gx) < 0.05 &&
+        Math.abs(target.gy - shown.gy) < 0.05 &&
+        Math.abs(target.tilt - shown.tilt) < 0.02 &&
+        Math.abs(target.lx - shown.lx) < 0.05
+      if (!settled || tracking) raf = requestAnimationFrame(tick)
+      else if (!tracking) getLoop().forEach((a) => a.play())
+    }
+    const schedule = (): void => {
+      if (!raf) raf = requestAnimationFrame(tick)
+    }
+
+    const engage = (): void => {
+      if (tracking) return
+      tracking = true
+      void rewind().then(schedule)
+    }
+    const release = (): void => {
+      if (!tracking) return
+      tracking = false
+      target.gx = target.gy = target.tilt = target.lx = target.ly = 0
+      schedule()
+    }
+
+    const onMove = (e: PointerEvent): void => {
+      if (e.pointerType !== "mouse") return
+      const r = el.getBoundingClientRect()
+      const dx = e.clientX - (r.left + r.width / 2)
+      const dy = e.clientY - (r.top + r.height / 2)
+      const len = Math.hypot(dx, dy) || 1
+      // Full deflection once the pointer is a couple of icon widths away.
+      const amt = Math.min(1, len / (r.width * 2.2))
+      const ux = (dx / len) * amt
+      const uy = (dy / len) * amt
+      // Where the eyes should sit in body units, then expressed as an offset from the rest pose.
+      target.gx = 4 + ux * 32 - REST_EYE_X
+      target.gy = -12 + uy * 26 - REST_EYE_Y
+      target.tilt = ux * 12
+      target.lx = ux * 6
+      target.ly = uy * 4
+      lastMove = performance.now()
+      engage()
+      schedule()
+    }
+    const onLeave = (): void => {
+      lastMove = -Infinity
+      release()
+    }
+
+    window.addEventListener("pointermove", onMove, { passive: true })
+    document.documentElement.addEventListener("pointerleave", onLeave)
+    window.addEventListener("blur", onLeave)
+    el.addEventListener("pointerenter", () =>
+      el.style.setProperty("--wide", "1.55")
+    )
+    el.addEventListener("pointerleave", () =>
+      el.style.setProperty("--wide", "1")
+    )
+  }
+</script>
+
+<script>
+  // Colour lab, dev builds only. A small finite state machine over pastel variants so the drop
+  // can be tried in different colours without touching code: click for the next one, shift+click
+  // for the previous, alt+click to go back to the default. The choice survives reloads. It is also
+  // reachable from the console as `mascotLab.send("NEXT")` and friends.
+  type Variant = { name: string; fill: string }
+  type Event = "NEXT" | "PREV" | "RESET" | { type: "SET"; index: number }
+
+  const VARIANTS: Variant[] = [
+    { name: "sky", fill: "#A9CDF0" },
+    { name: "slate", fill: "#767676" },
+    { name: "peach", fill: "#F5B7A0" },
+    { name: "apricot", fill: "#F4C89A" },
+    { name: "butter", fill: "#F2E2A0" },
+    { name: "sage", fill: "#B9CDB1" },
+    { name: "mint", fill: "#A8E0C5" },
+    { name: "periwinkle", fill: "#B7BDF3" },
+    { name: "lilac", fill: "#C9B6EE" },
+    { name: "rose", fill: "#F3B4C6" },
+  ]
+  const STORAGE_KEY = "vesper.mascot.variant"
+
+  const transition = (index: number, event: Event): number => {
+    const n = VARIANTS.length
+    if (event === "NEXT") return (index + 1) % n
+    if (event === "PREV") return (index - 1 + n) % n
+    if (event === "RESET") return 0
+    return Math.min(n - 1, Math.max(0, event.index))
+  }
+
+  if (import.meta.env.DEV) {
+    for (const el of document.querySelectorAll<HTMLElement>(
+      "[data-drop-mascot]"
+    )) {
+      const caption = el.querySelector<HTMLElement>(".drop__caption")
+      let index = Math.max(
+        0,
+        VARIANTS.findIndex((v) => v.name === localStorage.getItem(STORAGE_KEY))
+      )
+      let hide = 0
+
+      const render = (announce: boolean): void => {
+        const v = VARIANTS[index]
+        el.style.setProperty("--drop-fill", v.fill)
+        el.dataset.variant = v.name
+        if (!caption) return
+        caption.textContent = `${v.name} · ${v.fill}`
+        if (!announce) return
+        caption.classList.add("is-visible")
+        clearTimeout(hide)
+        hide = window.setTimeout(
+          () => caption.classList.remove("is-visible"),
+          1400
+        )
+      }
+      const send = (event: Event): void => {
+        index = transition(index, event)
+        localStorage.setItem(STORAGE_KEY, VARIANTS[index].name)
+        render(true)
+      }
+
+      el.classList.add("is-lab")
+      el.addEventListener("click", (e) =>
+        send(e.altKey ? "RESET" : e.shiftKey ? "PREV" : "NEXT")
+      )
+      render(false)
+      ;(window as unknown as { mascotLab: unknown }).mascotLab = {
+        send,
+        variants: VARIANTS,
+        get current() {
+          return VARIANTS[index]
+        },
+      }
+    }
+  }
+</script>
