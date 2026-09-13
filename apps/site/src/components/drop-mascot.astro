@@ -11,7 +11,7 @@ interface Props {
   /** Body colour. In dev, clicking the drop cycles through pastel variants on top of this. */
   fill?: string
 }
-const { class: className, label = "Vesper", fill = "#A9CDF0" } = Astro.props
+const { class: className, label = "Vesper", fill = "#E0284A" } = Astro.props
 
 const body =
   "M-44.0 -39.8 A62.2 62.2 0 1 0 44.0 -39.8 L10.6 -73.2 A15.0 15.0 0 0 0 -10.6 -73.2 Z"
@@ -27,17 +27,52 @@ const body =
   <svg viewBox="0 0 170 170" class="drop" aria-hidden="true">
     <defs>
       <clipPath id="drop-clip"><path d={body}></path></clipPath>
+      <linearGradient id="drop-grad" x1="0" y1="0" x2="0" y2="1">
+        <stop class="drop__grad-top" offset="0"></stop>
+        <stop class="drop__grad-mid" offset="0.55"></stop>
+        <stop class="drop__grad-bot" offset="1"></stop>
+      </linearGradient>
+      <radialGradient id="drop-shade" cx="0.35" cy="0.3" r="0.85">
+        <stop offset="0.55" stop-color="#1e46aa" stop-opacity="0"></stop>
+        <stop offset="1" stop-color="#1e46aa" stop-opacity="0.38"></stop>
+      </radialGradient>
+      <filter id="drop-soft" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="5"></feGaussianBlur>
+      </filter>
+      <filter id="drop-eye-glow" x="-120%" y="-70%" width="340%" height="240%">
+        <feGaussianBlur stdDeviation="3" result="b"></feGaussianBlur>
+        <feComponentTransfer in="b" result="g"
+          ><feFuncA type="linear" slope="0.6"></feFuncA></feComponentTransfer
+        >
+        <feMerge
+          ><feMergeNode in="g"></feMergeNode><feMergeNode in="SourceGraphic"
+          ></feMergeNode></feMerge
+        >
+      </filter>
     </defs>
     <g transform="translate(85 92)">
       <!-- The outer "lean" and "gaze" groups are driven by the pointer; the inner groups carry
            the idle loop. Keeping them separate means the two never fight over one transform. -->
       <g class="drop__lean">
         <g class="drop__body">
-          <path d={body} fill="#A9CDF0"></path>
+          <!-- depth: a shadow under the drop, then the translucent body, then the frosted rim,
+               shading and specular clipped to it -->
+          <path d={body} class="drop__shadow" filter="url(#drop-soft)"></path>
+          <path d={body} fill="url(#drop-grad)"></path>
           <g clip-path="url(#drop-clip)">
+            <path d={body} fill="url(#drop-shade)"></path>
+            <path d={body} class="drop__rim" filter="url(#drop-soft)"></path>
+            <path d={body} class="drop__rim-crisp"></path>
+            <ellipse
+              class="drop__spec"
+              cx="-20"
+              cy="-40"
+              rx="15"
+              ry="22"
+              filter="url(#drop-soft)"></ellipse>
             <g class="drop__gaze">
               <g class="drop__eyes">
-                <g class="drop__eye-wrap">
+                <g class="drop__eye-wrap" filter="url(#drop-eye-glow)">
                   <rect
                     class="drop__eye drop__eye--l"
                     x="-7.25"
@@ -47,7 +82,7 @@ const body =
                     rx="7.25"
                     fill="#fff"></rect>
                 </g>
-                <g class="drop__eye-wrap">
+                <g class="drop__eye-wrap" filter="url(#drop-eye-glow)">
                   <rect
                     class="drop__eye drop__eye--r"
                     x="-7.25"
@@ -84,9 +119,40 @@ const body =
     position: relative;
     display: block;
   }
-  .drop__body > path {
-    fill: var(--drop-fill, #a9cdf0);
-    transition: fill 320ms ease;
+  .drop__grad-top {
+    stop-color: color-mix(in oklch, var(--drop-fill, #e0284a) 72%, white);
+  }
+  .drop__grad-mid {
+    stop-color: var(--drop-fill, #e0284a);
+  }
+  .drop__grad-bot {
+    stop-color: color-mix(in oklch, var(--drop-fill, #e0284a) 78%, black);
+  }
+  .drop__grad-top,
+  .drop__grad-mid,
+  .drop__grad-bot {
+    transition: stop-color 320ms ease;
+  }
+  .drop__shadow {
+    fill: #000;
+    opacity: 0.35;
+    transform: translateY(9px);
+  }
+  .drop__rim {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 10;
+    opacity: 0.55;
+  }
+  .drop__rim-crisp {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 3;
+    opacity: 0.5;
+  }
+  .drop__spec {
+    fill: #fff;
+    opacity: 0.3;
   }
   /* Dev-only caption naming the current colour variant; shown briefly after each change. */
   .drop__caption {
@@ -97,7 +163,7 @@ const body =
     font-size: 11px;
     line-height: 1;
     white-space: nowrap;
-    color: var(--drop-fill, #a9cdf0);
+    color: var(--drop-fill, #e0284a);
     opacity: 0;
     transform: translateY(-2px);
     transition:
@@ -405,6 +471,17 @@ const body =
   type Event = "NEXT" | "PREV" | "RESET" | { type: "SET"; index: number }
 
   const VARIANTS: Variant[] = [
+    { name: "crimson", fill: "#E0284A" },
+    // saturated
+    { name: "cobalt", fill: "#2F6BE0" },
+    { name: "azure", fill: "#1E90FF" },
+    { name: "teal", fill: "#0FA3A3" },
+    { name: "emerald", fill: "#17B36B" },
+    { name: "amber", fill: "#F5A623" },
+    { name: "tangerine", fill: "#FF6A2C" },
+    { name: "magenta", fill: "#D62AA0" },
+    { name: "violet", fill: "#7A3FE4" },
+    // pastel
     { name: "sky", fill: "#A9CDF0" },
     { name: "slate", fill: "#767676" },
     { name: "peach", fill: "#F5B7A0" },

@@ -3,7 +3,7 @@
    groups that never share a transform, so moods can cross-fade without fighting. */
 
 .drop {
-  --fill: #a9cdf0;
+  --fill: #e0284a;
   --eye: #fdfcfc;
   --dot: rgba(253, 252, 252, 0.16);
   --gaze-x: 0px;
@@ -18,8 +18,35 @@
   height: 100%;
   overflow: visible;
 }
-.drop__fill {
-  fill: var(--fill);
+.drop__grad-top {
+  stop-color: color-mix(in oklch, var(--fill) 72%, white);
+}
+.drop__grad-mid {
+  stop-color: var(--fill);
+}
+.drop__grad-bot {
+  stop-color: color-mix(in oklch, var(--fill) 78%, black);
+}
+.drop__shadow {
+  fill: #000;
+  opacity: 0.35;
+  transform: translateY(9px);
+}
+.drop__rim {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 10;
+  opacity: 0.55;
+}
+.drop__rim-crisp {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  opacity: 0.5;
+}
+.drop__spec {
+  fill: #fff;
+  opacity: 0.3;
 }
 .drop__eye {
   fill: var(--eye);
