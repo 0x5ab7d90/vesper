@@ -1,9 +1,8 @@
 import '@fontsource-variable/inter'
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BorderBeam } from 'border-beam'
-import { TextShimmer } from './components/splash/text-shimmer'
 import { DropMascot, type DropMood } from './components/splash/drop-mascot'
+import { ProgressBar } from './components/splash/progress-bar'
 
 type UpdaterPhase =
   | 'checking'
@@ -29,20 +28,20 @@ function cleanVersion(raw?: string): string {
   return dash === -1 ? raw : raw.slice(0, dash)
 }
 
-function statusLabel(phase: UpdaterPhase, version: string, percent: number): string {
+function statusLabel(phase: UpdaterPhase, version: string): string {
   switch (phase) {
     case 'checking':
-      return 'Checking for updates…'
+      return 'Checking for updates'
     case 'available':
-      return version ? `Update available v${version}…` : 'Update available…'
+      return version ? `Update available, v${version}` : 'Update available'
     case 'not-available':
-      return 'Starting Vesper…'
+      return 'Starting Vesper'
     case 'downloading':
-      return `Downloading update… ${Math.round(percent)}%`
+      return 'Downloading update'
     case 'downloaded':
-      return 'Installing update…'
+      return 'Installing update'
     case 'error':
-      return 'Continuing…'
+      return 'Continuing'
   }
 }
 
@@ -117,7 +116,8 @@ function SplashApp(): React.JSX.Element {
     return () => offs.forEach((off) => off())
   }, [])
 
-  const showBar = phase === 'downloading' || phase === 'downloaded' || phase === 'available'
+  // The bar crawls while nothing is measurable and fills once a download reports progress.
+  const measured = phase === 'downloading' || phase === 'downloaded'
 
   return (
     <div
@@ -131,85 +131,35 @@ function SplashApp(): React.JSX.Element {
         boxSizing: 'border-box'
       }}
     >
-      <BorderBeam
-        colorVariant="sunset"
-        theme="dark"
-        size="md"
-        style={{ width: '100%', height: '100%' }}
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          background: '#201d1d',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: 14,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 28,
+          boxSizing: 'border-box',
+          color: '#fdfcfc',
+          fontFamily:
+            '"Inter Variable", -apple-system, BlinkMacSystemFont, "SF Pro", "SF Pro Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif',
+          minHeight: 244
+        }}
       >
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            background: '#201d1d',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: 14,
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 28,
-            boxSizing: 'border-box',
-            color: '#fdfcfc',
-            fontFamily:
-              '"Inter Variable", -apple-system, BlinkMacSystemFont, "SF Pro", "SF Pro Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif',
-            minHeight: 244
-          }}
-        >
-          <DropMascot
-            mood={moodFor(phase)}
-            percent={phase === 'downloading' || phase === 'downloaded' ? percent : null}
-            size={88}
-          />
-          <div
-            style={{
-              marginTop: 16,
-              fontSize: 14,
-              fontWeight: 500,
-              color: '#9a9898',
-              letterSpacing: '0.01em',
-              minHeight: 20,
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center'
-            }}
-          >
-            <TextShimmer
-              duration={2.4}
-              baseColor="rgba(253, 252, 252, 0.62)"
-              style={{ display: 'block' }}
-            >
-              {statusLabel(phase, version, percent)}
-            </TextShimmer>
-          </div>
-          <div
-            style={{
-              marginTop: 18,
-              width: '70%',
-              maxWidth: 260,
-              height: 2,
-              background: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: 999,
-              overflow: 'hidden',
-              opacity: showBar ? 1 : 0,
-              transition: 'opacity 250ms cubic-bezier(0.22, 1, 0.36, 1)'
-            }}
-          >
-            <div
-              style={{
-                height: '100%',
-                width: `${Math.max(0, Math.min(100, percent))}%`,
-                background: '#fdfcfc',
-                borderRadius: 999,
-                transition: 'width 200ms cubic-bezier(0.22, 1, 0.36, 1)'
-              }}
-            />
-          </div>
-        </div>
-      </BorderBeam>
+        <DropMascot mood={moodFor(phase)} percent={measured ? percent : null} size={88} />
+        <ProgressBar
+          value={measured ? percent : null}
+          label={statusLabel(phase, version)}
+          pendingLabel="Working"
+          completeLabel="Update ready"
+          style={{ marginTop: 22, maxWidth: 260 }}
+        />
+      </div>
     </div>
   )
 }
