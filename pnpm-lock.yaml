@@ -110,9 +110,6 @@ importers:
       anime4k-webgpu:
         specifier: ^1.0.0
         version: 1.0.0(@webgpu/types@0.1.70)
-      border-beam:
-        specifier: ^1.0.1
-        version: 1.0.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       bytenode:
         specifier: ^1.5.7
         version: 1.5.7
@@ -3051,12 +3048,6 @@ packages:
   boolean@3.2.0:
     resolution: {integrity: sha512-d0II/GO9uf9lfUHH2BQsjxzRJZBdsjgsBiW4BvhWk/3qoKwQFjIDVN19PfX8F2D/r9PCMTtLWjYVCFrpeYUzsw==}
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
-
-  border-beam@1.0.1:
-    resolution: {integrity: sha512-kswSYT8zRmt5en+wZMtJAbM8RjJglqSKwyRuQZWXnMHQsBwJisaznTfhD8SWvWJZKAtGbSkE2q/wY7seiNDmcw==}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
 
   bowser@2.14.1:
     resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
@@ -10303,11 +10294,6 @@ snapshots:
 
   boolean@3.2.0:
     optional: true
-
-  border-beam@1.0.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
-    dependencies:
-      react: 19.2.6
-      react-dom: 19.2.6(react@19.2.6)
 
   bowser@2.14.1:
     optional: true
