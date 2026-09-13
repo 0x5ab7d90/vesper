@@ -69,6 +69,31 @@ export function DropMascot({ mood, percent = null, size = 88 }: Props): React.JS
           <clipPath id="drop-clip">
             <path d={BODY} />
           </clipPath>
+          <linearGradient id="drop-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop className="drop__grad-top" offset="0" />
+            <stop className="drop__grad-mid" offset="0.55" />
+            <stop className="drop__grad-bot" offset="1" />
+          </linearGradient>
+          <radialGradient id="drop-shade" cx="0.35" cy="0.3" r="0.85">
+            <stop offset="0.55" stopColor="#1e46aa" stopOpacity="0" />
+            <stop offset="1" stopColor="#1e46aa" stopOpacity="0.38" />
+          </radialGradient>
+          <filter id="drop-soft" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="5" />
+          </filter>
+          <filter id="drop-wide" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="9" />
+          </filter>
+          <filter id="drop-eye-glow" x="-120%" y="-70%" width="340%" height="240%">
+            <feGaussianBlur stdDeviation="5" result="b" />
+            <feComponentTransfer in="b" result="g">
+              <feFuncA type="linear" slope="0.9" />
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode in="g" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         <g transform="translate(85 92)">
           <g ref={ring} className="drop__ring">
@@ -90,10 +115,23 @@ export function DropMascot({ mood, percent = null, size = 88 }: Props): React.JS
           </g>
           <g className="drop__stage">
             <g className="drop__body">
-              <path d={BODY} className="drop__fill" />
+              <path d={BODY} className="drop__glow" filter="url(#drop-wide)" />
+              <path d={BODY} className="drop__shadow" filter="url(#drop-wide)" />
+              <path d={BODY} fill="url(#drop-grad)" />
               <g clipPath="url(#drop-clip)">
+                <path d={BODY} fill="url(#drop-shade)" />
+                <path d={BODY} className="drop__rim" filter="url(#drop-soft)" />
+                <path d={BODY} className="drop__rim-crisp" />
+                <ellipse
+                  className="drop__spec"
+                  cx="-20"
+                  cy="-40"
+                  rx="15"
+                  ry="22"
+                  filter="url(#drop-soft)"
+                />
                 <g className="drop__eyes">
-                  <g className="drop__eye-wrap drop__eye-wrap--l">
+                  <g className="drop__eye-wrap drop__eye-wrap--l" filter="url(#drop-eye-glow)">
                     <rect
                       className="drop__eye drop__eye--l"
                       x="-7.25"
@@ -103,7 +141,7 @@ export function DropMascot({ mood, percent = null, size = 88 }: Props): React.JS
                       rx="7.25"
                     />
                   </g>
-                  <g className="drop__eye-wrap drop__eye-wrap--r">
+                  <g className="drop__eye-wrap drop__eye-wrap--r" filter="url(#drop-eye-glow)">
                     <rect
                       className="drop__eye drop__eye--r"
                       x="-7.25"

@@ -18,8 +18,39 @@
   height: 100%;
   overflow: visible;
 }
-.drop__fill {
-  fill: var(--fill);
+.drop__grad-top {
+  stop-color: color-mix(in srgb, var(--fill) 45%, #fff);
+}
+.drop__grad-mid {
+  stop-color: var(--fill);
+}
+.drop__grad-bot {
+  stop-color: color-mix(in srgb, var(--fill) 78%, #2d5fc4);
+}
+.drop__glow {
+  fill: #fff;
+  opacity: 0.22;
+}
+.drop__shadow {
+  fill: #000;
+  opacity: 0.5;
+  transform: translateY(7px);
+}
+.drop__rim {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 12;
+  opacity: 0.85;
+}
+.drop__rim-crisp {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  opacity: 0.5;
+}
+.drop__spec {
+  fill: #fff;
+  opacity: 0.45;
 }
 .drop__eye {
   fill: var(--eye);
