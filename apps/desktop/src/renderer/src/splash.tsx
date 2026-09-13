@@ -3,6 +3,7 @@ import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BorderBeam } from 'border-beam'
 import { TextShimmer } from './components/splash/text-shimmer'
+import { DropMascot, type DropMood } from './components/splash/drop-mascot'
 
 type UpdaterPhase =
   | 'checking'
@@ -45,33 +46,74 @@ function statusLabel(phase: UpdaterPhase, version: string, percent: number): str
   }
 }
 
+// Which mascot mood each updater phase maps to. Checking and the two "nothing to do" outcomes
+// are the daydream; anything with a download in flight is the ring; downloaded is the pop.
+function moodFor(phase: UpdaterPhase): DropMood {
+  switch (phase) {
+    case 'available':
+    case 'downloading':
+      return 'updating'
+    case 'downloaded':
+      return 'done'
+    default:
+      return 'idle'
+  }
+}
+
+// Browser preview only: with no preload bridge, `?simulate` plays the same cycle the main
+// process uses for `--splash-only`, so the splash can be worked on in a plain tab.
+function simulate(on: (channel: string, payload?: unknown) => void): () => void {
+  let timer = 0
+  const start = Date.now()
+  // `?simulate&hold=<ms>` freezes the cycle at that point, for screenshots.
+  const hold = Number(new URLSearchParams(location.search).get('hold'))
+  const step = (): void => {
+    const t = hold > 0 ? hold : (Date.now() - start) % 7200
+    if (t < 600) on('updater:checking')
+    else if (t < 1200) on('updater:available', { version: '0.5.7' })
+    else if (t < 5200) on('updater:progress', { percent: ((t - 1200) / 4000) * 100 })
+    else if (t < 6400) on('updater:downloaded', { version: '0.5.7' })
+    else on('updater:checking')
+    timer = window.setTimeout(step, 80)
+  }
+  step()
+  return () => clearTimeout(timer)
+}
+
 function SplashApp(): React.JSX.Element {
   const [phase, setPhase] = useState<UpdaterPhase>('checking')
   const [version, setVersion] = useState('')
   const [percent, setPercent] = useState(0)
 
   useEffect(() => {
-    if (!window.updater) return
-    const offs = [
-      window.updater.on('updater:checking', () => setPhase('checking')),
-      window.updater.on('updater:available', (p) => {
+    const handlers: Record<string, (payload?: unknown) => void> = {
+      'updater:checking': () => setPhase('checking'),
+      'updater:available': (p) => {
         const v = (p as { version?: string } | undefined)?.version
         setVersion(cleanVersion(v))
         setPercent(0)
         setPhase('available')
-      }),
-      window.updater.on('updater:not-available', () => setPhase('not-available')),
-      window.updater.on('updater:progress', (p) => {
+      },
+      'updater:not-available': () => setPhase('not-available'),
+      'updater:progress': (p) => {
         const pct = (p as { percent?: number } | undefined)?.percent ?? 0
         setPercent(pct)
         setPhase('downloading')
-      }),
-      window.updater.on('updater:downloaded', () => {
+      },
+      'updater:downloaded': () => {
         setPercent(100)
         setPhase('downloaded')
-      }),
-      window.updater.on('updater:error', () => setPhase('error'))
-    ]
+      },
+      'updater:error': () => setPhase('error')
+    }
+    const updater = window.updater
+    if (!updater) {
+      if (location.search.includes('simulate')) {
+        return simulate((channel, payload) => handlers[channel]?.(payload))
+      }
+      return
+    }
+    const offs = Object.entries(handlers).map(([channel, cb]) => updater.on(channel, cb))
     return () => offs.forEach((off) => off())
   }, [])
 
@@ -112,11 +154,17 @@ function SplashApp(): React.JSX.Element {
             color: '#fdfcfc',
             fontFamily:
               '"Inter Variable", -apple-system, BlinkMacSystemFont, "SF Pro", "SF Pro Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif',
-            minHeight: 164
+            minHeight: 244
           }}
         >
+          <DropMascot
+            mood={moodFor(phase)}
+            percent={phase === 'downloading' || phase === 'downloaded' ? percent : null}
+            size={88}
+          />
           <div
             style={{
+              marginTop: 16,
               fontSize: 14,
               fontWeight: 500,
               color: '#9a9898',

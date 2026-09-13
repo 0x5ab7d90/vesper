@@ -211,7 +211,7 @@ if (process.defaultApp) {
 }
 
 const SPLASH_WIDTH = 360
-const SPLASH_HEIGHT = 220
+const SPLASH_HEIGHT = 300
 const MIN_SPLASH_MS = 1200
 const MAIN_READY_FALLBACK_MS = 12_000
 
