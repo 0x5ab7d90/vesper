@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Dialog } from '@base-ui/react/dialog'
 import { useQuery } from '@tanstack/react-query'
+import { ConvexError } from 'convex/values'
 import { AnimatePresence, m as motion, useReducedMotion } from 'motion/react'
 import { CloseIcon } from '@renderer/components/icons'
 import { Ring } from '@renderer/components/ui/spinner'
@@ -72,6 +73,7 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
     props
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [resolving, setResolving] = useState(false)
+  const [pickError, setPickError] = useState<string | null>(null)
   const [sort, setSort] = useState<StreamSort>(() => readStreamSort())
 
   const handleSortChange = (next: StreamSort): void => {
@@ -110,12 +112,20 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
   const handlePick = async (stream: ParsedStream): Promise<void> => {
     setSelectedId(stream.playbackHash)
     setResolving(true)
+    setPickError(null)
     try {
       const url = await resolveStreamUrl({ stream, context })
       onOpenChange(false)
       onPicked({ url, stream })
     } catch (e) {
       console.error('[picker] pick failed', e)
+      // The action sends anything actionable as a ConvexError; everything else is a bug
+      // on our side and the viewer only needs to know the pick did not take.
+      setPickError(
+        e instanceof ConvexError && typeof e.data === 'string'
+          ? e.data
+          : 'Could not start that stream. Try another one.'
+      )
     } finally {
       setResolving(false)
     }
@@ -157,6 +167,16 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
           }
         >
           <div className="flex flex-col gap-0.5">
+            {/* A pick that did not take is a standing condition until the next one, so it
+                sits above the list rather than passing by as a toast. */}
+            {pickError ? (
+              <div
+                role="status"
+                className="mx-0.5 mb-1 rounded-[10px] bg-white/[0.05] px-3 py-2 text-[12px] leading-4 text-text"
+              >
+                {pickError}
+              </div>
+            ) : null}
             {streamsQuery.isError ? (
               <p className="px-3 py-6 text-center text-[13px] text-text-muted">
                 Failed to load streams.

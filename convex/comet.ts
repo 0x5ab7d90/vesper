@@ -1,7 +1,7 @@
 'use node'
 
 import { getAuthUserId } from '@convex-dev/auth/server'
-import { v } from 'convex/values'
+import { ConvexError, v } from 'convex/values'
 import { action } from './_generated/server'
 
 interface CometRawStream {
@@ -9,9 +9,11 @@ interface CometRawStream {
   title?: string
   description?: string
   url?: string
-  // Sootio puts the infohash and byte size directly on the stream object.
+  // Sootio puts the infohash and byte size directly on the stream object, and flags the
+  // rows that are already in the debrid cloud rather than merely findable on an indexer.
   _hash?: string
   _size?: number
+  isPersonal?: boolean
   behaviorHints?: {
     bingeGroup?: string
     filename?: string
@@ -99,11 +101,19 @@ function torrentioSize(title: string): number {
   return unit === 'TB' ? n * 1e12 : unit === 'GB' ? n * 1e9 : n * 1e6
 }
 
-// Comet marks cached with ⚡; Torrentio and Sootio with [RD+] (uncached is [RD download]);
+// Comet marks cached with ⚡; Torrentio with [RD+] (uncached is [RD download]);
 // Meteor exposes a boolean (name-wise: [RD🌩️] cached vs [RD☁️] uncached).
+//
+// Sootio needs its own rule. It stamps [RD+] on every row as a service label, not a cache
+// flag, and it searches its indexers by title rather than by IMDb id — so a request for
+// Kingdom comes back with Animal Kingdom and The Last Kingdom mixed in, all of them
+// claiming to be cached. The honest signal is whether the file is already in the debrid
+// cloud: ☁️ (isPersonal) is playable, 💾 is only a torrent it spotted on an indexer, and
+// resolving one of those 404s with "Could not resolve link".
 function isCached(source: Source, s: CometRawStream): boolean {
   if (source === 'comet') return (s.name ?? '').includes('⚡')
   if (source === 'meteor') return s.behaviorHints?.cached === true
+  if (source === 'sootio') return s.isPersonal === true || (s.title ?? '').includes('☁️')
   return (s.name ?? '').includes('[RD+]')
 }
 
@@ -219,7 +229,9 @@ export const resolve = action({
     const raw = await fetchRaw(src, type, imdbId, season, episode)
     const hashOf = HASH_OF[src]
     const match = raw.find((s) => hashOf(s) === playbackHash.toLowerCase())
-    if (!match?.url) throw new Error('Stream no longer available')
+    // Plain Errors reach the client as "Server Error" with the reason stripped, so anything
+    // the viewer could act on is a ConvexError.
+    if (!match?.url) throw new ConvexError('That stream is no longer listed. Try another one.')
     const r = await fetch(match.url, {
       method: 'GET',
       redirect: 'manual',
@@ -228,6 +240,10 @@ export const resolve = action({
     const location = r.headers.get('location')
     if (location) return location
     if (r.ok || r.status === 206) return match.url
-    throw new Error(`${src} resolve failed: ${r.status}`)
+    throw new ConvexError(
+      r.status === 404
+        ? 'That stream is not really cached. Try another one.'
+        : `Could not start that stream (${src} returned ${r.status}). Try another one.`
+    )
   }
 })
