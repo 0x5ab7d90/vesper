@@ -1,7 +1,7 @@
 import '@fontsource-variable/inter'
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { DropMascot, type DropMood } from './components/splash/drop-mascot'
+import { DropMascot, type DropMood } from './components/brand/drop-mascot'
 import { ProgressBar } from './components/splash/progress-bar'
 
 type UpdaterPhase =
@@ -51,9 +51,9 @@ function moodFor(phase: UpdaterPhase): DropMood {
   switch (phase) {
     case 'available':
     case 'downloading':
-      return 'updating'
+      return 'waiting'
     case 'downloaded':
-      return 'done'
+      return 'happy'
     default:
       return 'idle'
   }

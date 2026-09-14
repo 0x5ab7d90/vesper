@@ -40,7 +40,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
-          splash: resolve(__dirname, 'src/renderer/splash.html')
+          splash: resolve(__dirname, 'src/renderer/splash.html'),
+          'mascot-lab': resolve(__dirname, 'src/renderer/mascot-lab.html')
         }
       }
     }

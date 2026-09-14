@@ -9,7 +9,7 @@ const FILL = { type: 'spring', stiffness: 210, damping: 34, mass: 0.9 } as const
 const CROSSFADE = { type: 'spring', stiffness: 260, damping: 34, mass: 0.8 } as const
 const INSTANT = { duration: 0 } as const
 
-const ACCENT = '#e0284a'
+const ACCENT = '#7a3fe4'
 const FILL_SHADOW = 'inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.3)'
 
 const fillStyle: CSSProperties = {

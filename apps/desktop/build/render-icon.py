@@ -1,4 +1,4 @@
-"""Render the Vesper app icon: the drop mascot as a glossy water drop on a crimson squircle.
+"""Render the Vesper app icon: the drop mascot as a glossy water drop on a violet squircle.
 
 With --preview DIR it writes icon-1024.png and a preview sheet there. With --commit it writes
 build/icon-source.png, which generate-icons.mjs turns into the platform formats.
@@ -13,12 +13,13 @@ S = 2  # supersample
 N = 1024 * S
 HERE = Path(__file__).resolve().parent
 
-# Palette
-BG_TOP = (245, 96, 128)
-BG_BOTTOM = (172, 22, 56)
-DROP_TOP = (255, 232, 238)
-DROP_BOTTOM = (250, 168, 186)
-SHADE = (110, 8, 34)
+# Palette, tints and shades of the brand violet #7A3FE4
+BG_TOP = (147, 130, 255)
+BG_BOTTOM = (101, 59, 192)
+DROP_TOP = (233, 238, 255)
+DROP_BOTTOM = (182, 187, 255)
+SHADE = (61, 35, 124)
+POOL = (215, 221, 255)
 
 # Drop geometry (170-unit viewBox from the site component)
 BODY_CIRCLE = (0.0, 4.2, 62.2)
@@ -114,7 +115,7 @@ def render() -> Image.Image:
     # a soft light pooling at the top centre
     pool = Image.new("L", (N, N), 0)
     ImageDraw.Draw(pool).ellipse([N * 0.1, -N * 0.35, N * 0.9, N * 0.45], fill=255)
-    plate.alpha_composite(solid((255, 210, 220), blur(pool, 120), 0.35))
+    plate.alpha_composite(solid(POOL, blur(pool, 120), 0.35))
 
     # ---- edge treatment: bright rim at the top, darker rim at the bottom -------------------
     rim = ImageChops.subtract(tile, erode(tile, 9))
