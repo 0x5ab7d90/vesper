@@ -24,7 +24,6 @@ import { sortStreams, STREAM_SORTS, type StreamSort } from '@renderer/lib/stream
 import { readStreamSort, writeStreamSort } from '@renderer/lib/player-prefs'
 import { resolveStreamUrl, type StreamContext } from '@renderer/lib/resolve-stream'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
-import { WEB_SOURCES, type WebSource } from '@renderer/lib/web-sources'
 
 const POP = { type: 'spring', stiffness: 400, damping: 26 } as const
 
@@ -38,8 +37,6 @@ interface StreamPickerProps {
   season?: number
   episode?: number
   onPicked: (args: { url: string; stream: ParsedStream }) => void
-  /** A web player was chosen instead of a cached file — plays via the HLS route. */
-  onPickedWeb?: (args: { source: WebSource }) => void
 }
 
 export function StreamPicker(props: StreamPickerProps): React.JSX.Element {
@@ -69,8 +66,7 @@ export function StreamPicker(props: StreamPickerProps): React.JSX.Element {
 }
 
 function PickerBody(props: StreamPickerProps): React.JSX.Element {
-  const { title, mediaType, imdbId, tmdbId, season, episode, onPicked, onPickedWeb, onOpenChange } =
-    props
+  const { title, mediaType, imdbId, tmdbId, season, episode, onPicked, onOpenChange } = props
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [resolving, setResolving] = useState(false)
   const [pickError, setPickError] = useState<string | null>(null)
@@ -105,9 +101,6 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
     () => ({ mediaType, imdbId, season, episode, tmdbId }),
     [mediaType, imdbId, season, episode, tmdbId]
   )
-
-  // Web players key on the TMDB id; without one there is nothing to offer.
-  const webPlayers = tmdbId !== undefined && onPickedWeb !== undefined
 
   const handlePick = async (stream: ParsedStream): Promise<void> => {
     setSelectedId(stream.playbackHash)
@@ -183,11 +176,7 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
               </p>
             ) : null}
             {!streamsQuery.isLoading && !streamsQuery.isError && sorted.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[13px] text-text-muted">
-                {webPlayers
-                  ? 'No cached streams. A web player may still have it.'
-                  : 'No streams found.'}
-              </p>
+              <p className="px-3 py-6 text-center text-[13px] text-text-muted">No streams found.</p>
             ) : null}
             <AnimatePresence initial={false} mode="popLayout">
               {sorted.map((s) => (
@@ -200,72 +189,10 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
                 />
               ))}
             </AnimatePresence>
-            {webPlayers && !streamsQuery.isLoading ? (
-              <>
-                <div className="px-3 pt-4 pb-1.5">
-                  <span className="text-[11px] leading-[14px] font-medium tracking-[0.08em] text-text-tertiary uppercase">
-                    Web players
-                  </span>
-                </div>
-                {WEB_SOURCES.map((source) => (
-                  <WebRow
-                    key={source.id}
-                    source={source}
-                    onClick={() => {
-                      onOpenChange(false)
-                      onPickedWeb?.({ source })
-                    }}
-                  />
-                ))}
-              </>
-            ) : null}
           </div>
         </SkeletonSwap>
       </div>
     </div>
-  )
-}
-
-// Same row anatomy as a cached file, but the chip says where it plays from
-// rather than a quality it can't promise up front.
-function WebRow({
-  source,
-  onClick
-}: {
-  source: WebSource
-  onClick: () => void
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center justify-between gap-2.5 rounded-[10px] bg-transparent py-2.5 pr-3 pl-2.5 text-left outline-none transition-colors hover:bg-white/[0.04]"
-    >
-      <div className="flex min-w-0 grow items-center gap-2.5 overflow-hidden">
-        <span className="flex h-5 w-14 shrink-0 items-center justify-center rounded-md bg-white/[0.08] text-[11px] leading-3.5 font-medium tracking-[0.02em] text-text">
-          Web
-        </span>
-        <span className="grow truncate text-left text-[13px] leading-4 font-medium text-text">
-          {source.name}
-        </span>
-      </div>
-      <GlobeIcon className="size-3.5 shrink-0 text-text-tertiary" />
-    </button>
-  )
-}
-
-function GlobeIcon({ className }: { className?: string }): React.JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M3 12h18M12 3c2.5 2.6 3.75 5.6 3.75 9s-1.25 6.4-3.75 9c-2.5-2.6-3.75-5.6-3.75-9S9.5 5.6 12 3z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }
 

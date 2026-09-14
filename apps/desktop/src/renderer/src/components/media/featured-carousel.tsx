@@ -191,13 +191,6 @@ function FeaturedSlide({ movieId }: { movieId: number }): React.JSX.Element {
               }
             })
           }}
-          onPickedWeb={({ source }) => {
-            void navigate({
-              to: '/watch-web/$mediaType/$id',
-              params: { mediaType: 'movie', id: String(movieId) },
-              search: { title: details.data!.title, source: source.id }
-            })
-          }}
         />
       ) : null}
     </SkeletonSwap>
