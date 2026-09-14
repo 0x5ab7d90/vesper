@@ -68,6 +68,14 @@ export function TopBar({
   const navigate = useNavigate()
   const nav = useNavState()
 
+  // A drag region hands its mouse events to the window manager, so a press there never reaches
+  // the page and an open popover never sees the outside press that should dismiss it. While a
+  // menu in this bar is open we give the drag up, which costs dragging the window by the title
+  // bar for as long as the menu is open and buys back clicking anywhere to close it.
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const dragClass = searchOpen || userMenuOpen ? 'app-no-drag' : 'app-drag'
+
   if (minimal) {
     return (
       <header className="app-drag relative flex h-14 shrink-0 items-center bg-bg">
@@ -79,7 +87,7 @@ export function TopBar({
   }
 
   return (
-    <header className="app-drag relative flex h-14 shrink-0 items-center bg-bg">
+    <header className={`${dragClass} relative flex h-14 shrink-0 items-center bg-bg`}>
       {isMac ? <div className="w-[78px] shrink-0" aria-hidden /> : null}
 
       <nav className={`app-no-drag flex items-center gap-2 ${isWindows ? 'ml-4' : 'ml-6'}`}>
@@ -115,7 +123,7 @@ export function TopBar({
         className="app-no-drag absolute top-0 bottom-0 left-0 flex items-center pt-[5.2px]"
         style={{ width: searchWidth, transform: `translateX(${searchLeft}px)` }}
       >
-        <SearchControl />
+        <SearchControl onOpenChange={setSearchOpen} />
       </div>
 
       <div className="app-no-drag ml-auto flex shrink-0 items-center gap-2 pr-2.5">
@@ -129,7 +137,7 @@ export function TopBar({
             <PeopleGroupIcon className="size-5" />
           </IconButton>
         ) : null}
-        <UserMenu />
+        <UserMenu onOpenChange={setUserMenuOpen} />
       </div>
 
       {isWindows ? <WindowsControls /> : null}
