@@ -7,13 +7,8 @@ import { SearchInput } from '@renderer/components/ui/search-input'
 import { SkeletonSwap } from '@renderer/components/ui/skeleton-swap'
 import { IconButton } from '@renderer/components/ui/icon-button'
 import { Avatar } from '@renderer/components/ui/avatar'
-import {
-  CloseIcon,
-  CmdIcon,
-  ProjectsIcon,
-  ReturnIcon,
-  SearchIcon
-} from '@renderer/components/icons'
+import { CloseIcon, CmdIcon, ProjectsIcon, ReturnIcon } from '@renderer/components/icons'
+import { DropMascot } from '@renderer/components/brand/drop-mascot'
 import { isMac } from '@renderer/lib/platform'
 import { cn } from '@renderer/lib/cn'
 import { searchMultiQuery } from '@renderer/lib/tmdb-queries'
@@ -441,10 +436,8 @@ function SkeletonState(): React.JSX.Element {
 
 function NoResultsState({ query }: { query: string }): React.JSX.Element {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.06] text-text-tertiary">
-        <SearchIcon className="size-6" />
-      </div>
+    <div className="flex flex-col items-center justify-center gap-3 px-4 py-8 text-center">
+      <DropMascot mood="confused" size={72} />
       <div className="flex flex-col gap-1">
         <div className="text-[14px] font-semibold text-text">
           No matches for &quot;{query}&quot;
