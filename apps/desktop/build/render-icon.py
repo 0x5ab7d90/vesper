@@ -1,7 +1,9 @@
 """Render the Vesper app icon: the drop mascot as a glossy water drop on a violet squircle.
 
 With --preview DIR it writes icon-1024.png and a preview sheet there. With --commit it writes
-build/icon-source.png, which generate-icons.mjs turns into the platform formats.
+build/icon-source.png, which generate-icons.mjs turns into the platform formats. With
+--square PATH it writes the same artwork on a full square plate, for services such as Discord
+that apply their own corner mask.
 """
 import sys
 from pathlib import Path
@@ -107,8 +109,8 @@ def erode(mask: Image.Image, px: float) -> Image.Image:
     return mask.filter(ImageFilter.GaussianBlur(px * S / 1.6)).point(lambda v: 255 if v >= 250 else 0)
 
 
-def render() -> Image.Image:
-    tile = squircle_mask(N)
+def render(square: bool = False) -> Image.Image:
+    tile = Image.new("L", (N, N), 255) if square else squircle_mask(N)
 
     # ---- background plate ----------------------------------------------------------------
     plate = lerp_gradient(N, BG_TOP, BG_BOTTOM, gamma=1.15).convert("RGBA")
@@ -203,3 +205,7 @@ if __name__ == "__main__":
         icon.save(out / "icon-1024.png", optimize=True)
         preview_sheet(icon, out)
         print("preview in", out)
+    if "--square" in sys.argv:
+        out = Path(sys.argv[sys.argv.index("--square") + 1])
+        render(square=True).save(out, optimize=True)
+        print("wrote", out)

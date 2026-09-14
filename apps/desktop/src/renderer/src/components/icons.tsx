@@ -284,17 +284,6 @@ export const SignOutIcon = (props: IconProps): React.JSX.Element => (
   </svg>
 )
 
-export const VesperLogo = (props: IconProps): React.JSX.Element => (
-  <svg {...base} {...props}>
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M5 4C5.55 4 6 4.44 6 5V8C6 8.55 5.55 9 5 9C4.44 9 4 8.55 4 8V5C4 4.44 4.44 4 5 4ZM19 4C19.55 4 20 4.44 20 5V8C20 8.55 19.55 9 19 9C18.44 9 18 8.55 18 8V5C18 4.44 18.44 4 19 4ZM13 5C13.55 5 14 5.44 14 6V12.5C14 14.15 12.65 15.5 11 15.5C10.44 15.5 10 15.05 10 14.5C10 13.94 10.44 13.5 11 13.5C11.55 13.5 12 13.05 12 12.5V6C12 5.44 12.44 5 13 5ZM5.22 16.86C5.58 16.43 6.21 16.37 6.63 16.72C8.53 18.29 10.30 19 12 19C13.69 19 15.46 18.29 17.36 16.72C17.78 16.37 18.41 16.43 18.77 16.86C19.12 17.28 19.06 17.91 18.63 18.27C16.50 20.03 14.29 21 12 21C9.70 21 7.49 20.03 5.36 18.27C4.93 17.91 4.87 17.28 5.22 16.86Z"
-      fill="currentColor"
-    />
-  </svg>
-)
-
 export const LockIcon = (props: IconProps): React.JSX.Element => (
   <svg {...base} {...props}>
     <path
