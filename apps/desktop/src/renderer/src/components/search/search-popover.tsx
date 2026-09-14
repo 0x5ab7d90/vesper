@@ -36,7 +36,12 @@ type Row =
   | { kind: 'person'; id: string; data: TmdbSearchMultiItem }
   | { kind: 'user'; id: string; data: Doc<'profiles'> }
 
-export function SearchControl(): React.JSX.Element {
+interface SearchControlProps {
+  /** Told whenever the popover opens or closes, so the title bar can give up its drag region. */
+  onOpenChange?: (open: boolean) => void
+}
+
+export function SearchControl({ onOpenChange }: SearchControlProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const [open, setOpen] = useState(false)
@@ -47,6 +52,12 @@ export function SearchControl(): React.JSX.Element {
     setOpen(false)
     inputRef.current?.blur()
   }, [])
+
+  // Reported from one place so every route into the state, focus, typing, Escape, an outside
+  // press, opening a row, is announced the same way.
+  useEffect(() => {
+    onOpenChange?.(open)
+  }, [open, onOpenChange])
 
   useConvexQuery(api.search.recentSearches, { limit: 4 })
 

@@ -7,7 +7,12 @@ import { Avatar } from '@renderer/components/ui/avatar'
 import { PeopleGroupIcon, SettingsIcon, SignOutIcon, UserIcon } from '@renderer/components/icons'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
 
-export function UserMenu(): React.JSX.Element {
+interface UserMenuProps {
+  /** Told whenever the menu opens or closes, so the title bar can give up its drag region. */
+  onOpenChange?: (open: boolean) => void
+}
+
+export function UserMenu({ onOpenChange }: UserMenuProps): React.JSX.Element {
   const navigate = useNavigate()
   const { signOut } = useAuthActions()
   const data = useQuery(api.profiles.me)
@@ -29,7 +34,7 @@ export function UserMenu(): React.JSX.Element {
   }
 
   return (
-    <Menu.Root>
+    <Menu.Root onOpenChange={(next) => onOpenChange?.(next)}>
       <Menu.Trigger
         aria-label="Account menu"
         className="inline-flex shrink-0 items-center justify-center rounded-full bg-transparent outline-none"
