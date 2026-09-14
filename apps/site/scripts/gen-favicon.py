@@ -1,13 +1,13 @@
 """Render the drop mascot (rest pose) as favicon.svg plus the PNG sizes.
 
-Run from apps/site: python scripts/gen-favicon.py [--fill #E0284A]
+Run from apps/site: python scripts/gen-favicon.py [--fill #7A3FE4]
 """
 import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-FILL = sys.argv[sys.argv.index("--fill") + 1] if "--fill" in sys.argv else "#E0284A"
+FILL = sys.argv[sys.argv.index("--fill") + 1] if "--fill" in sys.argv else "#7A3FE4"
 BG = "#121212"  # apple touch icons need an opaque background
 BODY = "M-44.0 -39.8 A62.2 62.2 0 1 0 44.0 -39.8 L10.6 -73.2 A15.0 15.0 0 0 0 -10.6 -73.2 Z"
 BOX = 150

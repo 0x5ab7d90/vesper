@@ -1,52 +1,65 @@
 import { useEffect, useRef } from 'react'
+import type { DropMood } from './drop-moods'
 import './drop-mascot.css'
 
 /**
  * The Vesper drop, same geometry as the site: a circle with two 45 degree tangents meeting a
- * small rounded tip, eyes clipped by the body. Three moods for the splash screen:
- *
- * - idle: the five second daydream loop from the site.
- * - updating: the drop shrinks and sits upright while a ring of twelve dots turns around it. The
- *   leading dot is larger and the eyes follow it round. With a known percentage, dots light up
- *   in proportion so the ring doubles as a progress dial.
- * - done: the ring collapses into the drop, it pops back to full size and squints happily.
+ * small rounded tip, eyes clipped by the body. One component, six moods, each one a set of CSS
+ * transforms and eye shapes so the moods cross-fade into each other. See `drop-moods.ts` for
+ * what each mood is for.
  */
-export type DropMood = 'idle' | 'updating' | 'done'
+export type { DropMood }
 
 interface Props {
   mood: DropMood
-  /** 0..100 while updating; omit for an indeterminate ring. */
+  /** 0..100 while waiting; omit for an indeterminate ring. */
   percent?: number | null
   size?: number
+  /** Idle daydream loop. Off holds the rest pose. */
+  loop?: boolean
+  /** Glass treatment: gradient, rim, shading, specular, shadow. Off is the flat mark. */
+  gloss?: boolean
+  fill?: string
+  className?: string
 }
 
 const BODY = 'M-44.0 -39.8 A62.2 62.2 0 1 0 44.0 -39.8 L10.6 -73.2 A15.0 15.0 0 0 0 -10.6 -73.2 Z'
+// The eye is a path rather than a rect so its shape can transition: a capsule at rest, a smiling
+// arch when happy. Both shapes are six cubics in the same order, which is what lets one fold into
+// the other. The CSS owns both; this is the rest shape and the fallback if `d` is unsupported.
+const EYE =
+  'M-7.25 -8.75 C-7.25 -12.754 -4.004 -16 0 -16 C4.004 -16 7.25 -12.754 7.25 -8.75 C7.25 -2.917 7.25 2.917 7.25 8.75 C7.25 12.754 4.004 16 0 16 C-4.004 16 -7.25 12.754 -7.25 8.75 C-7.25 2.917 -7.25 -2.917 -7.25 -8.75 Z'
 const DOTS = 12
 const RING_RADIUS = 74
 const RING_SPIN_MS = 6000
 
-export function DropMascot({ mood, percent = null, size = 88 }: Props): React.JSX.Element {
+export function DropMascot({
+  mood,
+  percent = null,
+  size = 88,
+  loop = true,
+  gloss = true,
+  fill,
+  className
+}: Props): React.JSX.Element {
   const root = useRef<HTMLSpanElement>(null)
   const ring = useRef<SVGGElement>(null)
 
-  // While updating, the eyes chase the leading dot. Its angle is read straight off the ring's
+  // While waiting, the eyes chase the leading dot. Its angle is read straight off the ring's
   // CSS animation so the two can never drift apart.
   useEffect(() => {
     const el = root.current
     const ringEl = ring.current
-    if (!el || !ringEl || mood !== 'updating') return
+    if (!el || !ringEl || mood !== 'waiting') return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     let raf = 0
     const tick = (): void => {
       const anim = ringEl.getAnimations()[0]
       const t = anim ? Number(anim.currentTime ?? 0) : 0
-      // No easing here: the eyes sit exactly where the leading dot is, every frame.
       const theta = -Math.PI / 2 + (2 * Math.PI * (t % RING_SPIN_MS)) / RING_SPIN_MS
-      const gx = 4 + Math.cos(theta) * 28
-      const gy = -12 + Math.sin(theta) * 22
-      el.style.setProperty('--gaze-x', `${gx.toFixed(2)}px`)
-      el.style.setProperty('--gaze-y', `${gy.toFixed(2)}px`)
+      el.style.setProperty('--gaze-x', `${(4 + Math.cos(theta) * 28).toFixed(2)}px`)
+      el.style.setProperty('--gaze-y', `${(-12 + Math.sin(theta) * 22).toFixed(2)}px`)
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
@@ -58,9 +71,13 @@ export function DropMascot({ mood, percent = null, size = 88 }: Props): React.JS
   return (
     <span
       ref={root}
-      className="drop"
+      className={className ? `drop ${className}` : 'drop'}
       data-mood={mood}
-      style={{ width: size, height: size }}
+      data-loop={loop ? 'on' : 'off'}
+      data-gloss={gloss ? 'on' : 'off'}
+      style={
+        { width: size, height: size, ...(fill ? { '--fill': fill } : {}) } as React.CSSProperties
+      }
       role="img"
       aria-label="Vesper"
     >
@@ -93,6 +110,7 @@ export function DropMascot({ mood, percent = null, size = 88 }: Props): React.JS
           </filter>
         </defs>
         <g transform="translate(85 92)">
+          {/* waiting: the ring of dots */}
           <g ref={ring} className="drop__ring">
             {Array.from({ length: DOTS }, (_, i) => {
               const a = -Math.PI / 2 + (2 * Math.PI * i) / DOTS
@@ -111,41 +129,29 @@ export function DropMascot({ mood, percent = null, size = 88 }: Props): React.JS
             })}
           </g>
           <g className="drop__stage">
-            <g className="drop__body">
-              <path d={BODY} className="drop__shadow" filter="url(#drop-soft)" />
-              <path d={BODY} fill="url(#drop-grad)" />
-              <g clipPath="url(#drop-clip)">
-                <path d={BODY} fill="url(#drop-shade)" />
-                <path d={BODY} className="drop__rim" filter="url(#drop-soft)" />
-                <path d={BODY} className="drop__rim-crisp" />
-                <ellipse
-                  className="drop__spec"
-                  cx="-20"
-                  cy="-40"
-                  rx="15"
-                  ry="22"
-                  filter="url(#drop-soft)"
-                />
-                <g className="drop__eyes">
-                  <g className="drop__eye-wrap drop__eye-wrap--l" filter="url(#drop-eye-glow)">
-                    <rect
-                      className="drop__eye drop__eye--l"
-                      x="-7.25"
-                      y="-16"
-                      width="14.5"
-                      height="32"
-                      rx="7.25"
-                    />
-                  </g>
-                  <g className="drop__eye-wrap drop__eye-wrap--r" filter="url(#drop-eye-glow)">
-                    <rect
-                      className="drop__eye drop__eye--r"
-                      x="-7.25"
-                      y="-16"
-                      width="14.5"
-                      height="32"
-                      rx="7.25"
-                    />
+            <g className="drop__breath">
+              <g className="drop__body">
+                <path d={BODY} className="drop__shadow drop__gloss" filter="url(#drop-soft)" />
+                <path d={BODY} className="drop__fill" />
+                <g clipPath="url(#drop-clip)">
+                  <path d={BODY} className="drop__gloss" fill="url(#drop-shade)" />
+                  <path d={BODY} className="drop__rim drop__gloss" filter="url(#drop-soft)" />
+                  <path d={BODY} className="drop__rim-crisp drop__gloss" />
+                  <ellipse
+                    className="drop__spec drop__gloss"
+                    cx="-20"
+                    cy="-40"
+                    rx="15"
+                    ry="22"
+                    filter="url(#drop-soft)"
+                  />
+                  <g className="drop__eyes">
+                    <g className="drop__eye-wrap drop__eye-wrap--l" filter="url(#drop-eye-glow)">
+                      <path className="drop__eye drop__eye--l" d={EYE} />
+                    </g>
+                    <g className="drop__eye-wrap drop__eye-wrap--r" filter="url(#drop-eye-glow)">
+                      <path className="drop__eye drop__eye--r" d={EYE} />
+                    </g>
                   </g>
                 </g>
               </g>

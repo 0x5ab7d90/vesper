@@ -11,7 +11,7 @@ interface Props {
   /** Body colour. In dev, clicking the drop cycles through pastel variants on top of this. */
   fill?: string
 }
-const { class: className, label = "Vesper", fill = "#E0284A" } = Astro.props
+const { class: className, label = "Vesper", fill = "#7A3FE4" } = Astro.props
 
 const body =
   "M-44.0 -39.8 A62.2 62.2 0 1 0 44.0 -39.8 L10.6 -73.2 A15.0 15.0 0 0 0 -10.6 -73.2 Z"
@@ -120,13 +120,13 @@ const body =
     display: block;
   }
   .drop__grad-top {
-    stop-color: color-mix(in oklch, var(--drop-fill, #e0284a) 72%, white);
+    stop-color: color-mix(in oklch, var(--drop-fill, #7a3fe4) 72%, white);
   }
   .drop__grad-mid {
-    stop-color: var(--drop-fill, #e0284a);
+    stop-color: var(--drop-fill, #7a3fe4);
   }
   .drop__grad-bot {
-    stop-color: color-mix(in oklch, var(--drop-fill, #e0284a) 78%, black);
+    stop-color: color-mix(in oklch, var(--drop-fill, #7a3fe4) 78%, black);
   }
   .drop__grad-top,
   .drop__grad-mid,
@@ -163,7 +163,7 @@ const body =
     font-size: 11px;
     line-height: 1;
     white-space: nowrap;
-    color: var(--drop-fill, #e0284a);
+    color: var(--drop-fill, #7a3fe4);
     opacity: 0;
     transform: translateY(-2px);
     transition:
@@ -471,8 +471,9 @@ const body =
   type Event = "NEXT" | "PREV" | "RESET" | { type: "SET"; index: number }
 
   const VARIANTS: Variant[] = [
-    { name: "crimson", fill: "#E0284A" },
+    { name: "violet", fill: "#7A3FE4" },
     // saturated
+    { name: "crimson", fill: "#E0284A" },
     { name: "cobalt", fill: "#2F6BE0" },
     { name: "azure", fill: "#1E90FF" },
     { name: "teal", fill: "#0FA3A3" },
@@ -480,7 +481,6 @@ const body =
     { name: "amber", fill: "#F5A623" },
     { name: "tangerine", fill: "#FF6A2C" },
     { name: "magenta", fill: "#D62AA0" },
-    { name: "violet", fill: "#7A3FE4" },
     // pastel
     { name: "sky", fill: "#A9CDF0" },
     { name: "slate", fill: "#767676" },
