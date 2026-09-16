@@ -44,17 +44,28 @@ function WindowsIcon() {
   )
 }
 
+// The mascot swaps its eyes for hearts while this button is hovered. It listens on the window
+// so the two components stay decoupled.
+function setMascotLove(on: boolean): void {
+  window.dispatchEvent(new CustomEvent("vesper:mascot-love", { detail: on }))
+}
+
 export function DownloadButton() {
   const [platform, setPlatform] = useState<Platform>("mac")
 
   useEffect(() => {
     setPlatform(detectPlatform())
+    return () => setMascotLove(false)
   }, [])
 
   return (
     <a
       href={downloadUrl(platform)}
       className="group inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-bold text-background transition-[transform,background-color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-foreground/90 active:scale-[0.97]"
+      onPointerEnter={() => setMascotLove(true)}
+      onPointerLeave={() => setMascotLove(false)}
+      onFocus={() => setMascotLove(true)}
+      onBlur={() => setMascotLove(false)}
     >
       {platform === "windows" ? <WindowsIcon /> : <AppleIcon />}
       <span>Download Vesper</span>
