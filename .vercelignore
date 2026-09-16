@@ -1,0 +1,12 @@
+# Vercel CLI uploads the whole working tree and ignores .gitignore, so the
+# desktop app's build output (hundreds of MB, and over the 100 MB per-file
+# limit) has to be excluded here. The workspace manifests stay so the
+# frozen lockfile install still matches.
+.git
+node_modules
+out
+dist-builder
+apps/desktop/resources/bin
+apps/desktop/dist
+apps/site/.vercel
+*.log
