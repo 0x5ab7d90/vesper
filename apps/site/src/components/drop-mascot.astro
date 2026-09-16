@@ -11,10 +11,15 @@ interface Props {
   /** Body colour. In dev, clicking the drop cycles through pastel variants on top of this. */
   fill?: string
 }
+import { eyePath } from "./drop-mascot-shapes"
+
 const { class: className, label = "Vesper", fill = "#7A3FE4" } = Astro.props
 
 const body =
   "M-44.0 -39.8 A62.2 62.2 0 1 0 44.0 -39.8 L10.6 -73.2 A15.0 15.0 0 0 0 -10.6 -73.2 Z"
+
+// Each eye is one path that morphs into a heart while the download button is hovered.
+const eye = eyePath(0)
 ---
 
 <span
@@ -72,25 +77,17 @@ const body =
               filter="url(#drop-soft)"></ellipse>
             <g class="drop__gaze">
               <g class="drop__eyes">
+                <!-- Each eye is a group so the idle loop's spacing and widening live on the group,
+                     while the shape inside morphs on its own. -->
                 <g class="drop__eye-wrap" filter="url(#drop-eye-glow)">
-                  <rect
-                    class="drop__eye drop__eye--l"
-                    x="-7.25"
-                    y="-16"
-                    width="14.5"
-                    height="32"
-                    rx="7.25"
-                    fill="#fff"></rect>
+                  <g class="drop__eye drop__eye--l">
+                    <path class="drop__eye-shape" d={eye} fill="#fff"></path>
+                  </g>
                 </g>
                 <g class="drop__eye-wrap" filter="url(#drop-eye-glow)">
-                  <rect
-                    class="drop__eye drop__eye--r"
-                    x="-7.25"
-                    y="-16"
-                    width="14.5"
-                    height="32"
-                    rx="7.25"
-                    fill="#fff"></rect>
+                  <g class="drop__eye drop__eye--r">
+                    <path class="drop__eye-shape" d={eye} fill="#fff"></path>
+                  </g>
                 </g>
               </g>
             </g>
@@ -185,9 +182,10 @@ const body =
     transform: translate(var(--gaze-x), var(--gaze-y));
   }
   .drop__eye-wrap {
+    --spread: 0px;
     transform-box: fill-box;
     transform-origin: center;
-    transform: scale(var(--wide));
+    transform: translate(var(--spread), 0) scale(var(--wide));
     transition: transform 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
   }
   .drop__body,
@@ -212,6 +210,15 @@ const body =
   }
   .drop__eye--r {
     animation-name: drop-eye-r;
+  }
+
+  /* Heart eyes. The shape itself is morphed by the script below. Hearts are wider than the
+     pills, so the pair eases apart a little while they are hearts and never touch. */
+  .is-love .drop__eye-wrap:first-child {
+    --spread: -6px;
+  }
+  .is-love .drop__eye-wrap:last-child {
+    --spread: 6px;
   }
 
   /* Body: rotation about the centroid, a touch of squash and stretch, and the small drift the
@@ -338,6 +345,8 @@ const body =
   // Pointer tracking. While the pointer is moving, the idle loop winds back to its rest pose and
   // the eyes and tilt follow the cursor instead. Once the pointer has been still for a while, or
   // leaves the page, the gaze eases home and the loop picks up again from the start.
+  import { eyePath } from "./drop-mascot-shapes"
+
   const REST_EYE_X = 31.7
   const REST_EYE_Y = -8.3
   const IDLE_AFTER_MS = 2500
@@ -350,11 +359,55 @@ const body =
   for (const el of document.querySelectorAll<HTMLElement>(
     "[data-drop-mascot]"
   )) {
+    // Heart eyes while the download button is hovered. The button is a React island, so it
+    // announces hover on the window rather than reaching into this component. The eye shape is
+    // tweened point for point from the pill to the heart: in with a little overshoot, back out
+    // plainly, and always from wherever the shape currently is so a quick in-out never jumps.
+    const shapes = el.querySelectorAll<SVGPathElement>(".drop__eye-shape")
+    let morph = 0 // 0 = pill, 1 = heart
+    let morphRaf = 0
+    const paintEyes = (): void => {
+      const d = eyePath(morph)
+      shapes.forEach((s) => s.setAttribute("d", d))
+    }
+    const easeIn = (x: number): number =>
+      1 + 2.2 * (x - 1) ** 3 + 1.2 * (x - 1) ** 2
+    const easeOut = (x: number): number => 1 - (1 - x) ** 3
+    const setLove = (on: boolean): void => {
+      el.classList.toggle("is-love", on)
+      cancelAnimationFrame(morphRaf)
+      if (reduceMotion) {
+        morph = on ? 1 : 0
+        paintEyes()
+        return
+      }
+      const from = morph
+      const to = on ? 1 : 0
+      const ms = on ? 380 : 260
+      const ease = on ? easeIn : easeOut
+      const start = performance.now()
+      const step = (now: number): void => {
+        const k = Math.min(1, (now - start) / ms)
+        morph = from + (to - from) * ease(k)
+        paintEyes()
+        if (k < 1) morphRaf = requestAnimationFrame(step)
+      }
+      morphRaf = requestAnimationFrame(step)
+    }
+    window.addEventListener("vesper:mascot-love", (e) =>
+      setLove(Boolean((e as CustomEvent).detail))
+    )
+
     if (reduceMotion) continue
-    // Looked up lazily: the CSS animations may not have started when this runs.
+    // Looked up lazily: the CSS animations may not have started when this runs. Only the idle
+    // keyframes are kept; transitions are left out so pausing and rewinding never freezes one.
     let loop: Animation[] = []
     const getLoop = (): Animation[] =>
-      loop.length ? loop : (loop = el.getAnimations({ subtree: true }))
+      loop.length
+        ? loop
+        : (loop = el
+            .getAnimations({ subtree: true })
+            .filter((a) => a instanceof CSSAnimation))
 
     let tracking = false
     let lastMove = 0
