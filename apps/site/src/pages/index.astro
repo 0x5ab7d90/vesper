@@ -5,6 +5,17 @@ import Layout from "@/layouts/main.astro"
 import { DownloadButton } from "@/components/download-button"
 import DropMascot from "@/components/drop-mascot.astro"
 import { HeroBackdrop } from "@/components/hero-backdrop"
+import { HeroApp } from "@/components/hero-app"
+import heroDemo from "@/data/hero-demo.json"
+
+// The first featured slide paints on the very first frame, so its images are
+// preloaded instead of discovered after hydration.
+const first = heroDemo.featured[0]
+const preload = [
+  `https://image.tmdb.org/t/p/w1280${first.backdrop}`,
+  `https://image.tmdb.org/t/p/w780${first.poster}`,
+  first.logo,
+].filter(Boolean) as string[]
 // Read the current release version from the updater feed at build time so the
 // site does not depend on files outside apps/site when deployed on its own.
 const RELEASE_FEED =
@@ -58,6 +69,7 @@ const organizationSchema = {
 ---
 
 <Layout>
+  {preload.map((href) => <link rel="preload" as="image" href={href} />)}
   <script
     is:inline
     type="application/ld+json"
@@ -102,24 +114,27 @@ const organizationSchema = {
   <section class="screenshot-demo-section">
     <div class="screenshot-demo reveal [animation-delay:400ms]">
       <figure class="screenshot-demo__frame">
-        <HeroBackdrop client:idle />
+        <HeroBackdrop client:load />
         <div class="screenshot-demo__app">
-          <picture>
-            <source srcset="/screenshots/hero-home.avif" type="image/avif" />
-            <img
-              src="/screenshots/hero-home.png"
-              alt="Vesper app, showing the detail page for a movie with friends watching activity on the right"
-              width="2000"
-              height="1280"
-              loading="eager"
-              decoding="async"
-              draggable="false"
-            />
-          </picture>
+          <HeroApp client:load version={version} />
         </div>
+        <div class="screenshot-demo__fade" aria-hidden="true"></div>
       </figure>
     </div>
   </section>
+
+  <script is:inline>
+    // The app window is laid out at 1440px and scaled down to the frame. The
+    // React island re-measures after hydration; this sets the same value
+    // before first paint so the window is never briefly unscaled. It writes to
+    // the Astro-owned wrapper, not to the island, so hydration still matches.
+    ;(function () {
+      var host = document.querySelector(".screenshot-demo__app")
+      var outer = host && host.querySelector("[data-hero-app]")
+      if (!outer) return
+      host.style.setProperty("--ha-scale", outer.clientWidth / 1440)
+    })()
+  </script>
 
   <style>
     .screenshot-demo-section {
@@ -138,37 +153,69 @@ const organizationSchema = {
     .screenshot-demo:hover {
       transform: perspective(2000px) rotateX(0deg);
     }
-    /* The padding is the shader: it is the only part of the frame the app window
-       does not cover. The sides are deliberately thinner than the top band, at
-       0.4x, so the effect reads as a rim rather than a border. */
+    /* The padding is the shader: it is the only part of the frame the app
+       window does not cover. */
     .screenshot-demo__frame {
       position: relative;
       margin: 0;
-      padding: 3.6% 1.44% 0;
-      background: #000;
-      border-radius: 28px;
+      /* Equal on the top and the sides, so the window's top corners sit on the
+         45° diagonal out of the frame's own top corners. Percentage padding
+         resolves against width on every side, so that holds at any size. */
+      padding: 2.4% 2.4% 0;
+      /* Stands in for the shader until its first frame, sampled from where the
+         field settles: an indigo crown across the top with a softer bloom down
+         the left, so the rim never shows as flat black and the hand-off is
+         invisible. */
+      background:
+        radial-gradient(
+          130% 110% at 12% 15%,
+          #625dc1 0%,
+          #4d43ad 35%,
+          #3d2f96 65%,
+          #33268a 100%
+        )
+        #33268a;
+      /* Square at the bottom. That edge is fully faded to the page colour, so
+         the curve bought nothing, and clipping the bright rim along it left an
+         anti-aliased crescent the fade could not cover. */
+      border-radius: 26px 26px 0 0;
       overflow: hidden;
-      -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 85%);
-      mask-image: linear-gradient(to bottom, #000 10%, transparent 85%);
     }
+    /* The frame fades into the page. A mask on the tilted frame left tile
+       seams across the fade, so this is an opaque overlay in the page colour
+       instead, eased so the fall-off has no visible steps. */
+    .screenshot-demo__fade {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        to bottom,
+        rgba(18, 18, 18, 0) 10%,
+        rgba(18, 18, 18, 0.013) 17%,
+        rgba(18, 18, 18, 0.049) 24%,
+        rgba(18, 18, 18, 0.104) 31%,
+        rgba(18, 18, 18, 0.175) 38%,
+        rgba(18, 18, 18, 0.259) 45%,
+        rgba(18, 18, 18, 0.352) 52%,
+        rgba(18, 18, 18, 0.45) 59%,
+        rgba(18, 18, 18, 0.55) 66%,
+        rgba(18, 18, 18, 0.648) 72%,
+        rgba(18, 18, 18, 0.741) 77%,
+        rgba(18, 18, 18, 0.825) 81%,
+        rgba(18, 18, 18, 0.896) 84%,
+        rgba(18, 18, 18, 0.951) 87%,
+        rgba(18, 18, 18, 0.987) 90%,
+        #121212 93%
+      );
+    }
+    /* macOS 26 window. Same radius as the frame, and inset equally on both
+       axes, so the two top corners read as one diagonal. */
     .screenshot-demo__app {
       position: relative;
-      aspect-ratio: 2000 / 1280;
-      border-radius: 20px 20px 0 0;
+      border-radius: 26px 26px 0 0;
+      corner-shape: squircle;
       overflow: hidden;
-    }
-    .screenshot-demo__app picture,
-    .screenshot-demo__app img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center -2px;
-      image-rendering: -webkit-optimize-contrast;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-user-drag: none;
-      -webkit-touch-callout: none;
+      background: #000;
     }
     /* On narrow screens the frame fills the width, with radii and the tilt
        scaled down to match. The rim padding is a percentage so it shrinks on
@@ -182,10 +229,10 @@ const organizationSchema = {
         transform: perspective(1200px) rotateX(1.5deg);
       }
       .screenshot-demo__frame {
-        border-radius: 16px;
+        border-radius: 14px 14px 0 0;
       }
       .screenshot-demo__app {
-        border-radius: 10px 10px 0 0;
+        border-radius: 14px 14px 0 0;
       }
     }
     @media (max-width: 480px) {
@@ -193,10 +240,10 @@ const organizationSchema = {
         padding: 24px 8px 48px;
       }
       .screenshot-demo__frame {
-        border-radius: 12px;
+        border-radius: 10px 10px 0 0;
       }
       .screenshot-demo__app {
-        border-radius: 8px 8px 0 0;
+        border-radius: 10px 10px 0 0;
       }
     }
     @media (prefers-reduced-motion: reduce) {

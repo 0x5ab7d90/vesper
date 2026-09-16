@@ -1,0 +1,488 @@
+{
+  "featured": [
+    {
+      "id": 1423191,
+      "title": "Resident Evil",
+      "logo": "https://assets.fanart.tv/fanart/resident-evil-6a6028d5c2a4a.png",
+      "backdrop": "/3icyRAqgakNcQn6aDVz9libFmBA.jpg",
+      "poster": "/i7UyjfPio0VFHB9rBUZSFyhOoM8.jpg",
+      "tags": [
+        "Movie",
+        "Horror",
+        "Thriller",
+        "Science Fiction"
+      ],
+      "rating": "R",
+      "description": "Medical courier Bryan unwittingly finds himself fighting for survival as one fateful, horrifying night collapses around him in chaos.",
+      "year": 2026,
+      "runtime": "1 hr 30 min",
+      "starring": "Austin Abrams, Zach Cherry, Kali Reis",
+      "director": "Zach Cregger"
+    },
+    {
+      "id": 1101383,
+      "title": "The End of Oak Street",
+      "logo": "https://assets.fanart.tv/fanart/the-end-of-oak-street-69d14981ebbcf.png",
+      "backdrop": "/b9q9VmbXDvJmTziRqkwdEmFdwhr.jpg",
+      "poster": "/fYXqpgPmHMphSF2W30GbTeJVIa5.jpg",
+      "tags": [
+        "Movie",
+        "Science Fiction",
+        "Mystery",
+        "Thriller"
+      ],
+      "rating": "PG-13",
+      "description": "After a mysterious cosmic event rips Oak Street from suburbia and transports their neighborhood to someplace unknown, the Platt family soon discovers that their very survival depends on them sticking together as they navigate their now unrecognizable surroundings.",
+      "year": 2026,
+      "runtime": "1 hr 40 min",
+      "metacritic": 69,
+      "imdb": "6.5",
+      "starring": "Anne Hathaway, Ewan McGregor, Maisy Stella",
+      "director": "David Robert Mitchell"
+    },
+    {
+      "id": 969681,
+      "title": "Spider-Man: Brand New Day",
+      "logo": "https://assets.fanart.tv/fanart/untitled-spider-man-4-movie-68358639bb256.png",
+      "backdrop": "/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg",
+      "poster": "/bjiS5ipwxb9JFy3XRRN4OAilSeX.jpg",
+      "tags": [
+        "Movie",
+        "Science Fiction",
+        "Action",
+        "Adventure"
+      ],
+      "rating": "PG-13",
+      "description": "Fighting crime full-time as Spider-Man in a world that doesn't remember him—and the pressure of seeing his old friends move on without him—sparks a change in Peter Parker he may not have the power to control. But that transformation might also be the only thing that can stop a shocking new threat to the city and those he loves - a powerful villain no one can even see.",
+      "year": 2026,
+      "runtime": "2 hr 25 min",
+      "metacritic": 66,
+      "imdb": "8.1",
+      "starring": "Tom Holland, Zendaya, Mark Ruffalo",
+      "director": "Destin Daniel Cretton"
+    },
+    {
+      "id": 1108427,
+      "title": "Moana",
+      "logo": "https://assets.fanart.tv/fanart/moana-69c3be622f9a7.png",
+      "backdrop": "/c6BPbkO5Npt1OdwttAxCFo06wtH.jpg",
+      "poster": "/gaet1xQ2nxrG0V1Ep9T20ZMNEIC.jpg",
+      "tags": [
+        "Movie",
+        "Family",
+        "Fantasy",
+        "Comedy"
+      ],
+      "rating": "PG",
+      "description": "Teenage Moana answers the Ocean's call and, for the first time, voyages beyond the reef of her island of Motunui with infamous demigod Maui on an unforgettable journey to restore prosperity to her people.",
+      "year": 2026,
+      "runtime": "1 hr 55 min",
+      "metacritic": 42,
+      "imdb": "5.8",
+      "starring": "Catherine Lagaʻaia, Dwayne Johnson, Rena Owen",
+      "director": "Thomas Kail"
+    },
+    {
+      "id": 1368337,
+      "title": "The Odyssey",
+      "logo": "https://assets.fanart.tv/fanart/the-odyssey-6944ee9d74122.png",
+      "backdrop": "/iuylzRSllrGn7YB322kwKoOVMcq.jpg",
+      "poster": "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg",
+      "tags": [
+        "Movie",
+        "Adventure",
+        "Action",
+        "Fantasy"
+      ],
+      "rating": "R",
+      "description": "Odysseus, the legendary King of Ithaca, embarks on a long and perilous journey home following the Trojan War. Throughout his voyage, he is forced to confront the whims of gods, mythological monsters, and trials that stretch both his cunning and his humanity to the breaking point.",
+      "year": 2026,
+      "runtime": "2 hr 53 min",
+      "metacritic": 88,
+      "imdb": "8.4",
+      "starring": "Matt Damon, Tom Holland, Anne Hathaway",
+      "director": "Christopher Nolan"
+    },
+    {
+      "id": 1137844,
+      "title": "Mayday",
+      "logo": "https://image.tmdb.org/t/p/w500/pGv2k86yKzO4viRfKvRlYbbedQ2.png",
+      "backdrop": "/g7Ccid5kuD7A8hXWlsQiNfwOxaD.jpg",
+      "poster": "/hVXjX1jLZ1ljFSNGXpjJfbTUOa7.jpg",
+      "tags": [
+        "Movie",
+        "Action",
+        "Comedy"
+      ],
+      "rating": "PG-13",
+      "description": "When a U.S. Navy pilot on a top-secret mission during the Cold War gets trapped behind enemy lines, his only chance at survival is to form an alliance with an eccentric ex-KGB agent.",
+      "year": 2026,
+      "runtime": "1 hr 51 min",
+      "metacritic": 60,
+      "imdb": "6.9",
+      "starring": "Ryan Reynolds, Kenneth Branagh, Marcin Dorociński",
+      "director": "Jonathan Goldstein"
+    },
+    {
+      "id": 1302904,
+      "title": "Practical Magic 2",
+      "logo": "https://image.tmdb.org/t/p/w500/1XPnUdi7xocaAW2YGYBmddGmI3h.png",
+      "backdrop": "/nUcauJ000dFBYkgGpxyxJ5aWEH2.jpg",
+      "poster": "/ogwQOLbCfncjvBhFb5l0OmQH8KC.jpg",
+      "tags": [
+        "Movie",
+        "Romance",
+        "Fantasy",
+        "Comedy"
+      ],
+      "rating": "PG-13",
+      "description": "The Owens sisters must confront the dark curse that threatens to unravel their family once and for all.",
+      "year": 2026,
+      "runtime": "2 hr 10 min",
+      "starring": "Sandra Bullock, Nicole Kidman, Joey King",
+      "director": "Susanne Bier"
+    },
+    {
+      "id": 1339713,
+      "title": "Obsession",
+      "logo": "https://assets.fanart.tv/fanart/obsession-6a451d7c709e6.png",
+      "backdrop": "/rZfmzpixLKLR3Hg2u0WgC7XLFl8.jpg",
+      "poster": "/bRwnj8WEKBCvmfeUNOukJPwB43K.jpg",
+      "tags": [
+        "Movie",
+        "Horror",
+        "Thriller"
+      ],
+      "rating": "R",
+      "description": "After breaking the mysterious \"One Wish Willow\" to win his crush's heart, a hopeless romantic finds himself getting exactly what he asked for but soon discovers that some desires come at a dark, sinister price.",
+      "year": 2026,
+      "runtime": "1 hr 49 min",
+      "metacritic": 77,
+      "imdb": "7.9",
+      "starring": "Michael Johnston, Inde Navarrette, Cooper Tomlinson",
+      "director": "Curry Barker"
+    }
+  ],
+  "friends": [
+    {
+      "name": "maya",
+      "status": "watching",
+      "title": "Severance",
+      "season": 2,
+      "episode": 4,
+      "poster": "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+      "positionSec": 1260,
+      "durationSec": 3120
+    },
+    {
+      "name": "desmond",
+      "status": "watching",
+      "title": "Andor",
+      "season": 2,
+      "episode": 3,
+      "poster": "/khZqmwHQicTYoS7Flreb9EddFZC.jpg",
+      "positionSec": 600,
+      "durationSec": 2760
+    },
+    {
+      "name": "sofia",
+      "status": "paused",
+      "title": "Anora",
+      "poster": "/cgXk2tNYhJZLXdBDO5DidAVzQ82.jpg",
+      "positionSec": 3180,
+      "durationSec": 8280
+    },
+    {
+      "name": "theo",
+      "status": "idle",
+      "title": "Dune: Part Two",
+      "poster": "/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+      "ago": "3h ago"
+    },
+    {
+      "name": "ren",
+      "status": "idle",
+      "title": "Cowboy Bebop",
+      "season": 1,
+      "episode": 12,
+      "poster": "/xDiXDfZwC6XYC6fxHI1jl3A3Ill.jpg",
+      "ago": "6h ago"
+    },
+    {
+      "name": "june",
+      "status": "idle",
+      "title": "The Bear",
+      "season": 3,
+      "episode": 1,
+      "poster": "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg",
+      "ago": "1d ago"
+    },
+    {
+      "name": "arlo",
+      "status": "offline",
+      "title": "Oppenheimer",
+      "poster": "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+      "ago": "2d ago"
+    },
+    {
+      "name": "omar",
+      "status": "offline",
+      "title": "Better Call Saul",
+      "season": 4,
+      "episode": 9,
+      "poster": "/zjg4jpK1Wp2kiRvtt5ND0kznako.jpg",
+      "ago": "2d ago"
+    },
+    {
+      "name": "nadia",
+      "status": "offline",
+      "title": "Arcane",
+      "season": 2,
+      "episode": 7,
+      "poster": "/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg",
+      "ago": "5d ago"
+    },
+    {
+      "name": "iris",
+      "status": "offline",
+      "title": "The Substance",
+      "poster": "/lqoMzCcZYEFK729d6qzt349fB4o.jpg",
+      "ago": "9d ago"
+    },
+    {
+      "name": "wren",
+      "status": "offline",
+      "title": "Shōgun",
+      "season": 1,
+      "episode": 6,
+      "poster": "/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg",
+      "ago": "12d ago"
+    }
+  ],
+  "lists": [
+    {
+      "name": "Anime",
+      "pinned": true,
+      "count": 42,
+      "posters": [
+        "/dqZENchTd7lp5zht7BdlqM7RBhD.jpg",
+        "/6qQzMJG27XOJsyAEEIisoJB45j2.jpg",
+        "/vUHlpA5c1NXkds59reY3HMb4Abs.jpg",
+        "/npdB6eFzizki0WaZ1OvKcJrWe97.jpg"
+      ]
+    },
+    {
+      "name": "Rewatch",
+      "pinned": true,
+      "count": 18,
+      "posters": [
+        "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
+        "/xDiXDfZwC6XYC6fxHI1jl3A3Ill.jpg",
+        "/rTc7ZXdroqjkKivFPvCPX0Ru7uw.jpg",
+        "/umSVjVdbVwtx5ryCA2QXL44Durm.jpg"
+      ]
+    },
+    {
+      "name": "Movies",
+      "pinned": false,
+      "count": 63,
+      "posters": [
+        "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+        "/7fn624j5lj3xTme2SgiLCeuedmO.jpg",
+        "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
+        "/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg"
+      ]
+    },
+    {
+      "name": "TV",
+      "pinned": false,
+      "count": 27,
+      "posters": [
+        "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+        "/anFx9aTOOYqgS3v7x3R84Kz67ly.jpg",
+        "/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg",
+        "/27vEYsRKa3eAniwmoccOoluEXQ1.jpg"
+      ]
+    },
+    {
+      "name": "Korean",
+      "pinned": false,
+      "count": 11,
+      "posters": [
+        "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
+        "/1QdXdRYfktUSONkl1oD5gc6Be0s.jpg",
+        "/pWDtjs568ZfOTMbURQBYuT4Qxka.jpg",
+        "/zI8KZ4EdLUymWKX1YEkpZ0gtPUa.jpg"
+      ]
+    },
+    {
+      "name": "Sci-Fi",
+      "pinned": false,
+      "count": 24,
+      "posters": [
+        "/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+        "/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg",
+        "/khZqmwHQicTYoS7Flreb9EddFZC.jpg",
+        "/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg"
+      ]
+    },
+    {
+      "name": "Horror",
+      "pinned": false,
+      "count": 9,
+      "posters": [
+        "/4GFPuL14eXi66V96xBWY73Y9PfR.jpg",
+        "/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg",
+        "/yAKNmpcUweGH6WMCEWenwU9PsbE.jpg",
+        "/lqoMzCcZYEFK729d6qzt349fB4o.jpg"
+      ]
+    },
+    {
+      "name": "Thrillers",
+      "pinned": false,
+      "count": 16,
+      "posters": [
+        "/6d5XOczc226jECq0LIX0siKtgHR.jpg",
+        "/umSVjVdbVwtx5ryCA2QXL44Durm.jpg",
+        "/jcgUjx1QcupGzjntTVlnQ15lHqy.jpg",
+        "/pWDtjs568ZfOTMbURQBYuT4Qxka.jpg"
+      ]
+    },
+    {
+      "name": "Letterboxd 250",
+      "pinned": false,
+      "count": 250,
+      "posters": [
+        "/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
+        "/vfJFJPepRKapMd5G2ro7klIRysq.jpg",
+        "/6WTiOCfDPP8XV4jqfloiVWf7KHq.jpg",
+        "/dLlH4aNHdnmf62umnInL8xPlPzw.jpg"
+      ]
+    }
+  ],
+  "continueWatching": [
+    {
+      "title": "Severance",
+      "backdrop": "/ixgFmf1X59PUZam2qbAfskx2gQr.jpg",
+      "logo": "https://assets.fanart.tv/fanart/severance-678ef884f1bd2.png",
+      "season": 2,
+      "episode": 5,
+      "positionSec": 1440,
+      "durationSec": 3180
+    },
+    {
+      "title": "Dune: Part Two",
+      "backdrop": "/eZ239CUp1d6OryZEBPnO2n87gMG.jpg",
+      "logo": "https://assets.fanart.tv/fanart/dune-part-two-64c938b8900a4.png",
+      "positionSec": 4620,
+      "durationSec": 10020
+    },
+    {
+      "title": "The Bear",
+      "backdrop": "/aJtG4txtmiRHwAAqENQHZvBs6kY.jpg",
+      "logo": "https://assets.fanart.tv/fanart/the-bear--62b55125513a5.png",
+      "season": 3,
+      "episode": 2,
+      "positionSec": 300,
+      "durationSec": 1980
+    },
+    {
+      "title": "Arcane",
+      "backdrop": "/5cvnxEHT3e39DvT6ARw4GNCFrB0.jpg",
+      "logo": "https://assets.fanart.tv/fanart/arcane-6188e84c2f8fc.png",
+      "season": 2,
+      "episode": 8,
+      "positionSec": 2100,
+      "durationSec": 2520
+    },
+    {
+      "title": "Oppenheimer",
+      "backdrop": "/7CENyUim29IEsaJhUxIGymCRvPu.jpg",
+      "logo": "https://assets.fanart.tv/fanart/oppenheimer-63975bb33b34e.png",
+      "positionSec": 6000,
+      "durationSec": 10860
+    }
+  ],
+  "trending": [
+    {
+      "title": "Lanterns",
+      "poster": "/gpC7h43xPMEV3goYMQShfJbTtLq.jpg"
+    },
+    {
+      "title": "The End of Oak Street",
+      "poster": "/fYXqpgPmHMphSF2W30GbTeJVIa5.jpg"
+    },
+    {
+      "title": "Obsession",
+      "poster": "/bRwnj8WEKBCvmfeUNOukJPwB43K.jpg"
+    },
+    {
+      "title": "Moana",
+      "poster": "/gaet1xQ2nxrG0V1Ep9T20ZMNEIC.jpg"
+    },
+    {
+      "title": "Reacher",
+      "poster": "/f1VCQIG2iCyOookdgOzwtUpwWC0.jpg"
+    },
+    {
+      "title": "Spider-Man: Brand New Day",
+      "poster": "/bjiS5ipwxb9JFy3XRRN4OAilSeX.jpg"
+    },
+    {
+      "title": "Resident Evil",
+      "poster": "/i7UyjfPio0VFHB9rBUZSFyhOoM8.jpg"
+    },
+    {
+      "title": "Re:ZERO -Starting Life in Another World-",
+      "poster": "/oHqYrPAsIiTD5m4DuxumV4er8BU.jpg"
+    },
+    {
+      "title": "One Piece",
+      "poster": "/dB4EDhre2dsC2kxYDavyKWqLQwi.jpg"
+    },
+    {
+      "title": "The Runner",
+      "poster": "/uxCaBoYXsDC4A0SqTm3SISj0OwK.jpg"
+    },
+    {
+      "title": "Has Fallen",
+      "poster": "/eyK6fy2NWfjmyBjUvRAR14FynPK.jpg"
+    },
+    {
+      "title": "Backrooms",
+      "poster": "/rhGx6E3qRNMgj3i5su2oukNHwIQ.jpg"
+    },
+    {
+      "title": "The Odyssey",
+      "poster": "/5rhTDKUhPYvpdQIijFIs5VoWsON.jpg"
+    },
+    {
+      "title": "Neagley",
+      "poster": "/1m6CxPAuGv2oHc1ahERrcVWnk2J.jpg"
+    },
+    {
+      "title": "Disclosure Day",
+      "poster": "/AnJ8IQJI23hNpYXVNaythu061Ru.jpg"
+    },
+    {
+      "title": "Mayday",
+      "poster": "/hVXjX1jLZ1ljFSNGXpjJfbTUOa7.jpg"
+    },
+    {
+      "title": "Widow's Bay",
+      "poster": "/vKq8XEJKxQTHd2Bm5zZMFPUrke7.jpg"
+    },
+    {
+      "title": "Clayface",
+      "poster": "/5jCpQnWPikggmQZoDp1eAi6BI6w.jpg"
+    },
+    {
+      "title": "The Last Kiss",
+      "poster": "/cLZ7iFZc25vluSIKt3XtdSTait4.jpg"
+    },
+    {
+      "title": "The Perfect Lie",
+      "poster": "/a8qjbVX7lo1v7m5Awzhx7Ptk8gO.jpg"
+    }
+  ]
+}

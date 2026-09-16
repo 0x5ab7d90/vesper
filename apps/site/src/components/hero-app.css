@@ -1,0 +1,780 @@
+/* A 1:1 rebuild of the desktop app's home screen for the hero. Every size here
+   is copied from apps/desktop (main.css tokens + the layout components), laid
+   out at a fixed 1440×920 and scaled to the frame with a transform. */
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+
+.ha {
+  --ink: #fff;
+  --bg: #000;
+  --surface: #121212;
+  --surface-2: #1a1a1a;
+  --surface-3: #2a2a2a;
+  --surface-ink: #0a0a0a;
+  --text: #fff;
+  --text-secondary: rgba(255, 255, 255, 0.86);
+  --text-tertiary: #b3b3b3;
+  --text-muted: #7f7f7f;
+  --text-faint: rgba(255, 255, 255, 0.55);
+  --overlay-soft: rgba(255, 255, 255, 0.16);
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+
+  position: relative;
+  width: 1440px;
+  height: 920px;
+  /* Driven by --ha-scale rather than an inline transform: an inline script in
+     the page sets it before hydration, so React's markup stays identical on
+     the server and the client. */
+  transform: scale(var(--ha-scale, 1));
+  transform-origin: 0 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    "Inter Variable",
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro",
+    "SF Pro Text",
+    system-ui,
+    sans-serif;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.ha *,
+.ha *::before,
+.ha *::after {
+  box-sizing: border-box;
+  corner-shape: squircle;
+  margin: 0;
+  padding: 0;
+}
+.ha img,
+.ha svg {
+  display: block;
+  -webkit-user-drag: none;
+}
+.ha button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: default;
+}
+.ha .truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- title bar ---- */
+.ha__top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  flex-shrink: 0;
+}
+.ha__lights {
+  display: flex;
+  gap: 10px;
+  padding-left: 18px;
+  width: 78px;
+  flex-shrink: 0;
+}
+.ha__light {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  corner-shape: round;
+  box-shadow:
+    inset 0 0 0 0.5px rgba(0, 0, 0, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28);
+}
+.ha__light--close {
+  background: #ff5f57;
+}
+.ha__light--min {
+  background: #febc2e;
+}
+.ha__light--max {
+  background: #28c840;
+}
+.ha__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 24px;
+}
+.ha__iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  corner-shape: round;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.ha__iconbtn--ink {
+  background: var(--surface-ink);
+}
+.ha__iconbtn[disabled] {
+  opacity: 0.4;
+}
+.ha__search {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 440px;
+  width: 560px;
+  display: flex;
+  align-items: center;
+  padding-top: 5.2px;
+}
+.ha__searchbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  width: 100%;
+  padding: 0 6px 0 16px;
+  border-radius: var(--r-xl);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.ha__searchtext {
+  flex: 1;
+  min-width: 0;
+}
+.ha__searchtrail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ha__searchdivider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.ha__explore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-lg);
+  color: var(--text-tertiary);
+}
+.ha__account {
+  margin-left: auto;
+  padding-right: 10px;
+  display: flex;
+  align-items: center;
+}
+.ha__avatar {
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--surface-3);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* ---- shell ---- */
+.ha__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 4px 8px 8px;
+}
+.ha__left {
+  width: 280px;
+  flex-shrink: 0;
+  padding-right: 6px;
+}
+.ha__right {
+  width: 280px;
+  flex-shrink: 0;
+  padding-left: 6px;
+}
+.ha__main {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.ha__mainscroll {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-bottom: 32px;
+}
+
+/* ---- sidebars ---- */
+.ha__aside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  padding: 12px 8px 0;
+  gap: 8px;
+}
+.ha__aside--right {
+  padding-top: 16px;
+  gap: 0;
+}
+.ha__asidehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+.ha__asidehead h2 {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+}
+.ha__asidehead > div {
+  display: flex;
+  gap: 8px;
+}
+.ha__lists {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  list-style: none;
+}
+.ha__list {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--r-md);
+}
+.ha__cover {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ha__cover--liked {
+  background: linear-gradient(135deg, #9200a5 0%, #fc9687 100%);
+}
+.ha__cover--watched {
+  background: linear-gradient(135deg, #1f6fb2 0%, #4ec0a5 100%);
+}
+.ha__collage {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  gap: 1px;
+}
+.ha__collage > div:first-child {
+  width: 60%;
+  height: 100%;
+}
+.ha__collage > div:last-child {
+  display: flex;
+  flex-direction: column;
+  width: 40%;
+  height: 100%;
+  gap: 1px;
+}
+.ha__collage > div:last-child > div {
+  height: 33.333%;
+}
+.ha__collage div {
+  background-color: var(--surface-3);
+  background-size: cover;
+  background-position: center;
+}
+.ha__listtext {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.ha__listname {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 16px;
+}
+.ha__listname svg {
+  width: 12px;
+  height: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.ha__listcount {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+.ha__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+
+/* ---- friends ---- */
+.ha__friends {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.ha__friend {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--r-md);
+}
+.ha__friendposter {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--surface-3);
+  flex-shrink: 0;
+}
+.ha__friendtext {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.ha__friendname {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 16px;
+}
+.ha__miniavatar {
+  position: relative;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.ha__miniavatar img {
+  width: 100%;
+  height: 100%;
+}
+.ha__dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  corner-shape: round;
+  box-shadow: 0 0 0 2px var(--surface);
+  background: #3ba55d;
+}
+.ha__dot--offline {
+  background: #747f8d;
+}
+.ha__friendshow {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+.ha__friendmeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-muted);
+}
+.ha__bar {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface-3);
+  flex: 1;
+}
+.ha__bar--light {
+  background: rgba(255, 255, 255, 0.25);
+}
+.ha__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: #fff;
+}
+
+/* The splash's progress bar, ported from interior.dev: a recessed padded
+   track holding a violet fill with a lit top edge. Same anatomy as
+   apps/desktop/.../components/splash/progress-bar.tsx, sized for a row. */
+.ha__bar--splash {
+  height: auto;
+  overflow: visible;
+  border-radius: 4px;
+  padding: 2px;
+  background: #171515;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.ha__bar--splash > span {
+  height: 6px;
+  border-radius: 2px;
+  background: #7a3fe4;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ---- featured ---- */
+.ha__carousel {
+  position: relative;
+  overflow: hidden;
+}
+.ha__track {
+  display: flex;
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.ha__slide {
+  min-width: 0;
+  flex: 0 0 100%;
+}
+.ha__hero {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 534px;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.ha__hero .ha__layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+.ha__hero .ha__layer--poster {
+  mask-image: linear-gradient(black 60%, transparent 95%);
+  -webkit-mask-image: linear-gradient(black 60%, transparent 95%);
+}
+.ha__hero .ha__layer--backdrop {
+  mask-image: linear-gradient(black 65%, transparent 95%);
+  -webkit-mask-image: linear-gradient(black 65%, transparent 95%);
+}
+.ha__hero .ha__layer--fade {
+  background: linear-gradient(
+    180deg,
+    rgba(18, 18, 18, 0) 14.76%,
+    rgba(18, 18, 18, 0.55) 50%,
+    rgba(18, 18, 18, 0.92) 80%,
+    #121212 90%,
+    #121212 100%
+  );
+}
+.ha__herobody {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 32px;
+}
+.ha__herorow {
+  display: flex;
+  width: 100%;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+.ha__herocol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 532px;
+}
+.ha__logo {
+  margin-bottom: 4px;
+  max-height: 110px;
+  max-width: 380px;
+  width: auto;
+  object-fit: contain;
+  object-position: left;
+}
+.ha__title {
+  font-size: 48px;
+  line-height: 1.25;
+  font-weight: 500;
+}
+.ha__tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+.ha__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 5px;
+  background: var(--overlay-soft);
+  color: var(--text);
+}
+.ha__desc {
+  max-width: 460px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ha__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.ha__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ha__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ha__play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 24px;
+  border-radius: 14px;
+  background: #fff;
+  color: #000;
+  white-space: nowrap;
+}
+.ha__play svg {
+  width: 14px;
+  height: 14px;
+}
+.ha__resume {
+  display: block;
+  width: 48px;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+.ha__resume > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: currentColor;
+}
+.ha__soft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 14px;
+  background: var(--overlay-soft);
+  color: var(--text);
+  flex-shrink: 0;
+}
+.ha__soft svg {
+  width: 16px;
+  height: 16px;
+}
+.ha__credits {
+  display: flex;
+  width: 220px;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+.ha__credits > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ha__credits b {
+  font-weight: 500;
+  color: var(--text-faint);
+}
+.ha__credits span {
+  line-height: 1.4;
+}
+.ha__dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.ha__dots button {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  corner-shape: round;
+  background: rgba(255, 255, 255, 0.4);
+  transition:
+    width 200ms ease-out,
+    background-color 200ms ease-out;
+  cursor: pointer;
+}
+.ha__dots button[aria-current="true"] {
+  width: 24px;
+  background: #fff;
+}
+
+/* ---- rows ---- */
+.ha__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ha__sectiontitle {
+  padding: 0 24px;
+  font-size: 18px;
+  line-height: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.ha__row {
+  display: flex;
+  gap: 12px;
+  padding-left: 24px;
+  overflow: hidden;
+}
+.ha__continue {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  height: 140px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--r-xl);
+  padding: 12px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--surface-2);
+}
+.ha__continue::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0) 40%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
+}
+.ha__continue img {
+  position: relative;
+  max-height: 36px;
+  max-width: 130px;
+  width: auto;
+  align-self: flex-start;
+  object-fit: contain;
+  object-position: left;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+.ha__continue > span {
+  position: relative;
+  max-width: 180px;
+  font-size: 15px;
+  line-height: 1.25;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.ha__continuefoot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  font-size: 12px;
+  line-height: 16px;
+}
+.ha__continuefoot svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.ha__poster {
+  width: 140px;
+  height: 210px;
+  flex-shrink: 0;
+  border-radius: var(--r-xl);
+  background-size: cover;
+  background-position: center;
+  background-color: var(--surface-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ha__track,
+  .ha__dots button {
+    transition: none;
+  }
+}
