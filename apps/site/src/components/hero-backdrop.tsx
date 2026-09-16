@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react"
 
 import { createShader, type ShaderHandle } from "./hero-shader.webgpu"
 
-// The band sits on the frame's black, so the shader's darkest pixels should be
-// that same black rather than the shader's own off-black default.
+// The shader's darkest pixels stay black; the frame underneath carries a
+// static violet placeholder in the same tones, so the canvas only has to
+// bring the motion, not the colour.
 const BACKDROP = "#000000"
 
 // The canvas spans the whole frame but the app window hides all but its rim, so
@@ -15,7 +16,8 @@ const MAX_PIXELS = 300_000
 /**
  * The rim of motion around the app window in the hero: an ascii field drawn
  * with WebGPU. It fades up out of the frame's black once the first frame is
- * ready, so a slow adapter never shows a half-drawn canvas. The shader holds a
+ * ready, over the frame's matching violet placeholder, so a slow adapter
+ * never shows a half-drawn canvas or a black band. The shader holds a
  * still frame under `prefers-reduced-motion`.
  */
 export function HeroBackdrop() {
@@ -64,7 +66,7 @@ export function HeroBackdrop() {
         width: "100%",
         height: "100%",
         opacity: ready ? 1 : 0,
-        transition: "opacity 700ms ease-out",
+        transition: "opacity 320ms ease-out",
         pointerEvents: "none",
       }}
     />

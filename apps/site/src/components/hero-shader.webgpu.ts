@@ -1,10 +1,11 @@
 /*
- * ivi · OpenShaders — https://openshaders.com/@ivi
- * WebGPU · ascii
+ * ikousikdas · OpenShaders — https://openshaders.com/@ikousikdas
+ * WebGPU · dither
  *
  * Vendored. The upstream React wrapper was dropped; hero-backdrop.tsx drives
- * `createShader` directly so it can tell when the first frame lands. The only
- * other change from the source is the `maxPixels` option, marked below.
+ * `createShader` directly so it can tell when the first frame lands. Two other
+ * changes from the source, both marked below: the `maxPixels` option, and a
+ * tinted floor under the field so the rim never bottoms out to black.
  */
 
 const FIELD_SHADER = `struct Uniforms {
@@ -17,40 +18,44 @@ const FIELD_SHADER = `struct Uniforms {
 }
 @group(0) @binding(0) var<uniform> u: Uniforms;
 
-const HUE: f32 = 0.953635156;
-const HUE_SPREAD: f32 = -0.184035271;
-const HUE_TRAVEL: f32 = 1.57046068;
-const CHROMA: f32 = 0.141511515;
-const LIGHTNESS: f32 = 0.586134255;
-const COLOUR_CYCLE: f32 = 0.222998977;
-const THETA: f32 = 2.12540436;
-const SHEAR: f32 = 0.962084413;
-const SHRINK: f32 = 0.947006941;
-const LAYERS: f32 = 94.0;
-const WARP_FREQ_X: f32 = 0.524770617;
-const WARP_FREQ_Y: f32 = 2.93985009;
-const WARP_AMP_X: f32 = 0.151622936;
-const WARP_AMP_Y: f32 = 0.0239817742;
-const ASPECT_X: f32 = 1.71934617;
-const ASPECT_Y: f32 = 0.182248801;
-const OFFSET_X: f32 = 0.397791296;
-const OFFSET_Y: f32 = 0.04886619;
-const TILT: f32 = 1.90936303;
-const ZOOM: f32 = 0.91058737;
-const CENTRE_X: f32 = -0.424010217;
-const CENTRE_Y: f32 = -0.369226873;
-const GLOW_SIZE: f32 = 0.00179315149;
-const FALLOFF: f32 = 0.337029129;
-const VIGNETTE: f32 = 0.134450778;
-const FLOW_SPEED: f32 = 0.477519393;
-const FLOW_DIRECTION: f32 = -1.0;
-const BREATH_RATE: f32 = 0.449710608;
-const BREATH_AMOUNT: f32 = 0.0766919404;
-const PHASE: f32 = 47.1974754;
+const HUE: f32 = 0.698732793;
+const HUE_SPREAD: f32 = 0.158122376;
+const HUE_TRAVEL: f32 = 1.9665072;
+const CHROMA: f32 = 0.164083183;
+const LIGHTNESS: f32 = 0.518666744;
+const COLOUR_CYCLE: f32 = 0.228598669;
+const THETA: f32 = 2.12045741;
+const SHEAR: f32 = 0.958195627;
+const SHRINK: f32 = 0.947512805;
+const LAYERS: f32 = 80.0;
+const WARP_FREQ_X: f32 = 0.589318752;
+const WARP_FREQ_Y: f32 = 2.07117844;
+const WARP_AMP_X: f32 = 0.13557522;
+const WARP_AMP_Y: f32 = 0.034511786;
+const ASPECT_X: f32 = 2.49771571;
+const ASPECT_Y: f32 = 0.134689555;
+const OFFSET_X: f32 = 0.3501077;
+const OFFSET_Y: f32 = -0.0350841135;
+const TILT: f32 = 0.919211268;
+const ZOOM: f32 = 0.981723249;
+const CENTRE_X: f32 = -0.139665559;
+const CENTRE_Y: f32 = -0.687601686;
+const GLOW_SIZE: f32 = 0.00258922996;
+const FALLOFF: f32 = 0.313483953;
+const VIGNETTE: f32 = 0.0647038072;
+const FLOW_SPEED: f32 = 0.395169288;
+const FLOW_DIRECTION: f32 = 1.0;
+const BREATH_RATE: f32 = 0.382269382;
+const BREATH_AMOUNT: f32 = 0.110518456;
+const PHASE: f32 = 61.4440804;
 const ECHO: f32 = 0.0;
-const ECHO_SHIFT: f32 = -0.177085638;
-const SOFTNESS: f32 = 0.00146197586;
-const LIGHT_SWING: f32 = 0.122748613;
+const ECHO_SHIFT: f32 = -0.187745616;
+const SOFTNESS: f32 = 0.00265127933;
+const LIGHT_SWING: f32 = 0.188226059;
+
+// Added to the vendored source: the floor the field can never fall below.
+const FLOOR_LIGHTNESS: f32 = 0.50;
+const FLOOR_CHROMA: f32 = 0.115;
 
 @vertex fn vertexMain(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
   let position = vec2f(f32((index << 1u) & 2u), f32(index & 2u));
@@ -122,6 +127,14 @@ fn blueNoise(p: vec2f, frame: f32) -> f32 {
   color = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
   color = pow(clamp(color, vec3f(0.0), vec3f(1.0)), vec3f(0.85, 0.92, 0.98));
 
+  // Added to the vendored source. The field drifts, so wherever no structure
+  // happens to be near, the rim fell to the page's black and the dither had no
+  // signal left to work with. Screening a dim tint from the field's own hue
+  // under everything puts a floor on it: the texture stays legible everywhere
+  // and the bright structures still read on top.
+  let floorTint = clamp(oklchToLinear(FLOOR_LIGHTNESS, FLOOR_CHROMA, mix(hue0, hue1, 0.5)), vec3f(0.0), vec3f(1.0));
+  color = floorTint + color * (1.0 - floorTint);
+
   let edge = smoothstep(0.5, 1.6, length(pos));
   color *= 1.0 - edge * VIGNETTE;
 
@@ -146,13 +159,10 @@ const RARITY_SHADER = `struct Uniforms {
 @group(0) @binding(0) var<uniform> u: Uniforms;
 @group(0) @binding(1) var sceneSampler: sampler;
 @group(0) @binding(2) var tScene: texture_2d<f32>;
-@group(0) @binding(3) var glyphSampler: sampler;
-@group(0) @binding(4) var tGlyphs: texture_2d<f32>;
 
-const STRENGTH: f32 = 0.772687197;
-const SCALE: f32 = 1.16680264;
-const SEED: f32 = 0.689243734;
-const GLYPH_COUNT: f32 = 10.0;
+const STRENGTH: f32 = 0.901340127;
+const SCALE: f32 = 1.23227406;
+const SEED: f32 = 0.0523844287;
 
 @vertex fn vertexMain(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
   let position = vec2f(f32((index << 1u) & 2u), f32(index & 2u));
@@ -172,38 +182,36 @@ fn sceneInk(uv: vec2f) -> vec3f {
 fn fmod(x: f32, y: f32) -> f32 { return x - y * floor(x / y); }
 fn fmod2(x: vec2f, y: f32) -> vec2f { return x - y * floor(x / y); }
 
-fn ascii(frag: vec2f) -> vec3f {
-  let cellPx = vec2f(0.62, 1.0) * floor(SCALE * 9.0 * u.pixelRatio + 0.5);
-  let cell = floor(frag / cellPx);
-  let centre = (cell + 0.5) * cellPx;
-  var ink = vec3f(0.0);
-  ink += sceneInk(centre / u.resolution) * 2.0;
-  ink += sceneInk((centre + cellPx * vec2f(0.3, 0.3)) / u.resolution);
-  ink += sceneInk((centre + cellPx * vec2f(-0.3, 0.3)) / u.resolution);
-  ink += sceneInk((centre + cellPx * vec2f(0.3, -0.3)) / u.resolution);
-  ink += sceneInk((centre + cellPx * vec2f(-0.3, -0.3)) / u.resolution);
-  ink /= 6.0;
-  let level = pow(clamp(dot(ink, LUMA) * (0.9 + 0.3 * STRENGTH), 0.0, 1.0), 0.9);
-  let glyph = floor(level * (GLYPH_COUNT - 1.0) + 0.5);
-  let local = (frag - cell * cellPx) / cellPx;
-  let atlas = vec2f((glyph + local.x) / GLYPH_COUNT, 1.0 - local.y);
-  let mask = textureSample(tGlyphs, glyphSampler, atlas).r;
-  let under = sceneInk(frag / u.resolution) * 0.45;
-  return under + ink * mask * (1.0 + 0.7 * u.lightMode);
+const BAYER = mat4x4f(
+  0.94118, 0.29412, 0.76471, 0.05882,
+  0.47059, 0.70588, 0.23529, 0.52941,
+  0.82353, 0.11765, 0.88235, 0.17647,
+  0.35294, 0.58824, 0.41176, 0.64706
+);
+
+fn dither(frag: vec2f) -> vec3f {
+  let cell = max(2.0, floor(SCALE * 2.2 * u.pixelRatio + 0.5));
+  let grid = floor(frag / cell);
+  let soft = sceneInk(frag / u.resolution);
+  let ink = sceneInk((grid + 0.5) * cell / u.resolution);
+  let level = dot(ink, LUMA);
+  let levels = 8.0;
+  let b = vec2i(fmod2(grid, 4.0));
+  let bayer = BAYER;
+  let v = pow(max(level, 0.0), 0.8) * levels + bayer[b.x][b.y];
+  let quantised = pow(floor(v) / levels, 1.25);
+  let dithered = ink * (quantised / max(level, 1e-4));
+  let presence = smoothstep(0.03, 0.14, level) * (0.38 + 0.2 * STRENGTH);
+  return mix(soft, dithered, vec3f(presence));
 }
 
 @fragment fn fragmentMain(@builtin(position) position: vec4f) -> @location(0) vec4f {
   let frag = vec2f(position.x, u.resolution.y - position.y);
-  let ink = ascii(frag);
+  let ink = dither(frag);
   var color = fromInk(clamp(ink, vec3f(0.0), vec3f(1.0)));
   return vec4f(clamp(color, vec3f(0.0), vec3f(1.0)), 1.0);
 }
 `
-
-const GLYPHS = " .:;+*oO8@"
-const GLYPH_CELL = { width: 48, height: 80 }
-const GLYPH_MIP_LEVELS = 5
-const GLYPH_FONT = "500 62px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
 
 export type ShaderTheme = "dark" | "light"
 
@@ -390,68 +398,6 @@ function animate(
 
 const UNIFORM_FLOATS = 12
 
-function createGlyphAtlas() {
-  const width = GLYPH_CELL.width * GLYPHS.length,
-    height = GLYPH_CELL.height
-  const canvas = document.createElement("canvas")
-  canvas.width = width
-  canvas.height = height
-  const context = canvas.getContext("2d", { willReadFrequently: true })
-  if (!context) throw new Error("A 2D canvas context is needed to draw the glyph atlas.")
-  context.fillStyle = "#000"
-  context.fillRect(0, 0, width, height)
-  context.fillStyle = "#fff"
-  context.textAlign = "center"
-  context.textBaseline = "middle"
-  context.font = GLYPH_FONT
-  for (let i = 0; i < GLYPHS.length; i++) {
-    context.fillText(
-      GLYPHS[i],
-      i * GLYPH_CELL.width + GLYPH_CELL.width / 2,
-      height / 2 + height * 0.04,
-    )
-  }
-  const levels = [context.getImageData(0, 0, width, height).data]
-  for (let level = 1, w = width, h = height; level < GLYPH_MIP_LEVELS; level++) {
-    const source = levels[level - 1]
-    const next = new Uint8ClampedArray((w / 2) * (h / 2) * 4)
-    for (let y = 0; y < h / 2; y++) {
-      for (let x = 0; x < w / 2; x++) {
-        const a = (y * 2 * w + x * 2) * 4,
-          b = a + 4,
-          c = a + w * 4,
-          d = c + 4
-        for (let ch = 0; ch < 4; ch++)
-          next[(y * (w / 2) + x) * 4 + ch] =
-            (source[a + ch] + source[b + ch] + source[c + ch] + source[d + ch] + 2) >> 2
-      }
-    }
-    levels.push(next)
-    w /= 2
-    h /= 2
-  }
-  return { width, height, levels }
-}
-
-function uploadGlyphAtlas(device: GPUDevice) {
-  const atlas = createGlyphAtlas()
-  const texture = device.createTexture({
-    size: [atlas.width, atlas.height],
-    mipLevelCount: atlas.levels.length,
-    format: "rgba8unorm",
-    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-  })
-  atlas.levels.forEach((pixels, level) => {
-    const width = atlas.width >> level,
-      height = atlas.height >> level
-    device.queue.writeTexture({ texture, mipLevel: level }, pixels, { bytesPerRow: width * 4 }, [
-      width,
-      height,
-    ])
-  })
-  return texture
-}
-
 export async function createShader(
   canvas: HTMLCanvasElement,
   options: ShaderOptions = {},
@@ -567,15 +513,6 @@ export async function createShader(
       addressModeU: "clamp-to-edge",
       addressModeV: "clamp-to-edge",
     })
-    const glyphs = uploadGlyphAtlas(device)
-    const glyphView = glyphs.createView()
-    const glyphSampler = device.createSampler({
-      magFilter: "linear",
-      minFilter: "linear",
-      mipmapFilter: "linear",
-      addressModeU: "clamp-to-edge",
-      addressModeV: "clamp-to-edge",
-    })
     let scene: GPUTexture | null = null
     let sceneView: GPUTextureView | null = null
     let postBindGroups: GPUBindGroup[] = []
@@ -598,8 +535,6 @@ export async function createShader(
             { binding: 0, resource: { buffer: uniforms } },
             { binding: 1, resource: sceneSampler },
             { binding: 2, resource: view },
-            { binding: 3, resource: glyphSampler },
-            { binding: 4, resource: glyphView },
           ],
         }),
       )
