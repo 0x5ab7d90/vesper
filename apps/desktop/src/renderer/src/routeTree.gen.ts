@@ -28,6 +28,7 @@ import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedListIdRouteImport } from './routes/_authenticated/list.$id'
 import { Route as AuthenticatedFightsIdRouteImport } from './routes/_authenticated/fights.$id'
 import { Route as AuthenticatedWatchMediaTypeIdRouteImport } from './routes/_authenticated/watch.$mediaType.$id'
+import { Route as AuthenticatedWatchWebMediaTypeIdRouteImport } from './routes/_authenticated/watch-web.$mediaType.$id'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -126,6 +127,12 @@ const AuthenticatedWatchMediaTypeIdRoute =
     path: '/watch/$mediaType/$id',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedWatchWebMediaTypeIdRoute =
+  AuthenticatedWatchWebMediaTypeIdRouteImport.update({
+    id: '/watch-web/$mediaType/$id',
+    path: '/watch-web/$mediaType/$id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/tv/$id': typeof AuthenticatedTvIdRoute
   '/user/$username': typeof AuthenticatedUserUsernameRoute
   '/watch-fight/$id': typeof AuthenticatedWatchFightIdRoute
+  '/watch-web/$mediaType/$id': typeof AuthenticatedWatchWebMediaTypeIdRoute
   '/watch/$mediaType/$id': typeof AuthenticatedWatchMediaTypeIdRoute
 }
 export interface FileRoutesByTo {
@@ -165,6 +173,7 @@ export interface FileRoutesByTo {
   '/tv/$id': typeof AuthenticatedTvIdRoute
   '/user/$username': typeof AuthenticatedUserUsernameRoute
   '/watch-fight/$id': typeof AuthenticatedWatchFightIdRoute
+  '/watch-web/$mediaType/$id': typeof AuthenticatedWatchWebMediaTypeIdRoute
   '/watch/$mediaType/$id': typeof AuthenticatedWatchMediaTypeIdRoute
 }
 export interface FileRoutesById {
@@ -187,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated/tv/$id': typeof AuthenticatedTvIdRoute
   '/_authenticated/user/$username': typeof AuthenticatedUserUsernameRoute
   '/_authenticated/watch-fight/$id': typeof AuthenticatedWatchFightIdRoute
+  '/_authenticated/watch-web/$mediaType/$id': typeof AuthenticatedWatchWebMediaTypeIdRoute
   '/_authenticated/watch/$mediaType/$id': typeof AuthenticatedWatchMediaTypeIdRoute
 }
 export interface FileRouteTypes {
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/tv/$id'
     | '/user/$username'
     | '/watch-fight/$id'
+    | '/watch-web/$mediaType/$id'
     | '/watch/$mediaType/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/tv/$id'
     | '/user/$username'
     | '/watch-fight/$id'
+    | '/watch-web/$mediaType/$id'
     | '/watch/$mediaType/$id'
   id:
     | '__root__'
@@ -250,6 +262,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tv/$id'
     | '/_authenticated/user/$username'
     | '/_authenticated/watch-fight/$id'
+    | '/_authenticated/watch-web/$mediaType/$id'
     | '/_authenticated/watch/$mediaType/$id'
   fileRoutesById: FileRoutesById
 }
@@ -395,6 +408,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWatchMediaTypeIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/watch-web/$mediaType/$id': {
+      id: '/_authenticated/watch-web/$mediaType/$id'
+      path: '/watch-web/$mediaType/$id'
+      fullPath: '/watch-web/$mediaType/$id'
+      preLoaderRoute: typeof AuthenticatedWatchWebMediaTypeIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -413,6 +433,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedTvIdRoute: typeof AuthenticatedTvIdRoute
   AuthenticatedUserUsernameRoute: typeof AuthenticatedUserUsernameRoute
   AuthenticatedWatchFightIdRoute: typeof AuthenticatedWatchFightIdRoute
+  AuthenticatedWatchWebMediaTypeIdRoute: typeof AuthenticatedWatchWebMediaTypeIdRoute
   AuthenticatedWatchMediaTypeIdRoute: typeof AuthenticatedWatchMediaTypeIdRoute
 }
 
@@ -431,6 +452,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedTvIdRoute: AuthenticatedTvIdRoute,
   AuthenticatedUserUsernameRoute: AuthenticatedUserUsernameRoute,
   AuthenticatedWatchFightIdRoute: AuthenticatedWatchFightIdRoute,
+  AuthenticatedWatchWebMediaTypeIdRoute: AuthenticatedWatchWebMediaTypeIdRoute,
   AuthenticatedWatchMediaTypeIdRoute: AuthenticatedWatchMediaTypeIdRoute,
 }
 
