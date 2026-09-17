@@ -5,7 +5,7 @@ import { useQuery as useConvexQuery, useMutation } from 'convex/react'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { Avatar } from '@renderer/components/ui/avatar'
 import { ScrollSection } from '@renderer/components/ui/scroll-section'
-import { SkeletonSwap } from '@renderer/components/ui/skeleton-swap'
+import { Skeleton } from '@renderer/components/ui/skeleton'
 import { PosterRow, type PosterRowItem } from '@renderer/components/media/poster-row'
 import { CastCard } from '@renderer/components/media/cast-card'
 import { searchMoviesQuery, searchPeopleQuery, searchTvQuery } from '@renderer/lib/tmdb-queries'
@@ -64,13 +64,10 @@ function SearchPage(): React.JSX.Element {
         </h1>
       </header>
 
-      <SkeletonSwap
-        ready={!loading}
-        reserve="auto"
-        label="Search results"
-        skeleton={<SkeletonSections />}
-      >
-        {allEmpty ? (
+      <div aria-busy={loading}>
+        {loading ? (
+          <SkeletonSections />
+        ) : allEmpty ? (
           <EmptyResults query={query} />
         ) : (
           <div className="-mx-6 flex flex-col gap-8">
@@ -143,7 +140,7 @@ function SearchPage(): React.JSX.Element {
             ) : null}
           </div>
         )}
-      </SkeletonSwap>
+      </div>
     </div>
   )
 }
@@ -189,10 +186,7 @@ function SkeletonSections(): React.JSX.Element {
       {(['Movies', 'Series', 'People', 'Users'] as const).map((title) => (
         <ScrollSection key={title} title={title}>
           {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[210px] w-[140px] shrink-0 animate-pulse rounded-xl bg-surface-2"
-            />
+            <Skeleton key={i} className="h-[210px] w-[140px] shrink-0 rounded-xl" />
           ))}
         </ScrollSection>
       ))}
