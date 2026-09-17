@@ -25,6 +25,7 @@ import icon from '../../resources/icon.png?asset'
 import iconMac from '../../resources/icon-mac.png?asset'
 import { registerEmbedStreams, stopEmbedProxy } from './embed-stream'
 import { registerKalshi } from './kalshi'
+import { registerWebSources } from './web-sources'
 import { registerPower } from './power'
 
 app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport')
@@ -462,6 +463,7 @@ app.whenReady().then(() => {
   resetLegacyShortcutIcons()
   registerEmbedStreams()
   registerKalshi()
+  registerWebSources()
   registerPower()
 
   ipcMain.handle(

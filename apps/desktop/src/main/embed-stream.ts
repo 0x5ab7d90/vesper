@@ -273,6 +273,13 @@ export function registerEmbedStreams(): void {
   })
 }
 
+// A playlist whose URL is already known (web sources, ADR-0019) skips the
+// hidden window and only needs the header proxy in front of it.
+export async function proxiedPlaylistUrl(playlistUrl: string, referer: string): Promise<string> {
+  await ensureProxy()
+  return proxyUrlFor(playlistUrl, referer, 'playlist')
+}
+
 export function stopEmbedProxy(): void {
   proxyServer?.close()
   proxyServer = null

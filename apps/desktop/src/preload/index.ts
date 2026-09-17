@@ -71,6 +71,20 @@ const api = {
   fights: {
     kalshiGet: (path: string) => ipcRenderer.invoke('fights:kalshiGet', path) as Promise<unknown>
   },
+  web: {
+    // Rows arrive server by server as chunk events tagged with this call's id;
+    // the invoke resolves with the complete list once every server has answered.
+    listStreams: (input: unknown, onChunk?: (rows: unknown[]) => void) => {
+      const requestId = Math.random().toString(36).slice(2)
+      const listener = (_e: unknown, id: string, rows: unknown[]): void => {
+        if (id === requestId) onChunk?.(rows)
+      }
+      ipcRenderer.on('web:streamsChunk', listener)
+      return ipcRenderer
+        .invoke('web:listStreams', input, requestId)
+        .finally(() => ipcRenderer.removeListener('web:streamsChunk', listener))
+    }
+  },
   onOpenUrl: (cb: (route: string) => void): (() => void) => {
     const listener = (_e: unknown, route: string): void => cb(route)
     ipcRenderer.on('app:open-url', listener)
