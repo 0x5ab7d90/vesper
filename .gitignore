@@ -32,3 +32,4 @@ AGENTS.md
 # Local Netlify folder
 .netlify
 apps/site/.wrangler/
+.vercel
