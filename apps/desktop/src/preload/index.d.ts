@@ -9,6 +9,24 @@ export interface DiscordActivity {
   endTimestamp?: number
 }
 
+export interface WebStreamInput {
+  title: string
+  mediaType: 'movie' | 'tv'
+  tmdbId: number
+  imdbId?: string
+  year?: number
+  season?: number
+  episode?: number
+}
+
+export interface WebStream {
+  id: string
+  server: string
+  lang: string
+  quality: string
+  url: string
+}
+
 export interface VesperApi {
   window: {
     minimize: () => Promise<void>
@@ -57,6 +75,16 @@ export interface VesperApi {
   }
   fights: {
     kalshiGet: (path: string) => Promise<unknown>
+  }
+  web: {
+    /**
+     * Every HLS stream the web source API carries for a title, playable through the local
+     * proxy. Rows arrive server by server through `onChunk`; the promise carries the full list.
+     */
+    listStreams: (
+      input: WebStreamInput,
+      onChunk?: (rows: WebStream[]) => void
+    ) => Promise<WebStream[]>
   }
   onOpenUrl: (cb: (route: string) => void) => () => void
   onAuthCode: (cb: (code: string) => void) => () => void
