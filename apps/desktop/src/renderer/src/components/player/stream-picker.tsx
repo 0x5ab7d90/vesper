@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ConvexError } from 'convex/values'
 import { AnimatePresence, m as motion, useReducedMotion } from 'motion/react'
 import { CloseIcon } from '@renderer/components/icons'
+import { DitherCorner } from '@renderer/components/brand/dither-corner'
 import { Ring } from '@renderer/components/ui/spinner'
 import { SkeletonSwap } from '@renderer/components/ui/skeleton-swap'
 import { cn } from '@renderer/lib/cn'
@@ -54,9 +55,10 @@ export function StreamPicker(props: StreamPickerProps): React.JSX.Element {
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={POP}
-            className="flex h-[560px] flex-col border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
+            className="relative flex h-[560px] flex-col border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
             style={squircleStyle('frame')}
           >
+            <DitherCorner />
             {props.open ? <PickerBody {...props} /> : null}
           </motion.div>
         </Dialog.Popup>
@@ -125,8 +127,8 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 pt-1.5 pb-2">
+    <div className="relative flex h-full min-h-0 flex-col">
+      <div className="shrink-0 pt-1.5 pb-1.5">
         <div className="flex items-center justify-between pl-2.5 pr-1">
           <h2 className="min-w-0 truncate text-[15px] leading-4 font-medium tracking-[-0.01em] text-text">
             {title}
@@ -135,17 +137,19 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
             <CloseIcon className="size-3.5" />
           </Dialog.Close>
         </div>
-        <Segmented<StreamSort>
-          className="mx-1 mt-2.5"
-          value={sort}
-          onChange={handleSortChange}
-          options={STREAM_SORTS}
-        />
       </div>
       <div
         className="flex min-h-0 flex-1 flex-col border border-white/[0.05] bg-surface"
         style={squircleStyle('inset')}
       >
+        {/* The sort tabs live inside the inset: its solid surface keeps them legible under
+            the frame's dither, and the list reads as one panel with its controls. */}
+        <Segmented<StreamSort>
+          className="mx-1.5 mt-1.5 shrink-0"
+          value={sort}
+          onChange={handleSortChange}
+          options={STREAM_SORTS}
+        />
         <SkeletonSwap
           ready={!streamsQuery.isLoading}
           reserve="auto"
