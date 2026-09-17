@@ -177,6 +177,24 @@ function MoviePage(): React.JSX.Element {
           mediaType="movie"
           imdbId={imdbId}
           tmdbId={movieId}
+          year={
+            details.data.release_date ? Number(details.data.release_date.slice(0, 4)) : undefined
+          }
+          onPickedWeb={({ stream }) => {
+            void navigate({
+              to: '/watch-web/$mediaType/$id',
+              params: { mediaType: 'movie', id: String(movieId) },
+              search: {
+                streamId: stream.id,
+                title: details.data.title,
+                poster: tmdbImage(details.data.poster_path, 'w342') ?? undefined,
+                imdbId,
+                year: details.data.release_date
+                  ? Number(details.data.release_date.slice(0, 4))
+                  : undefined
+              }
+            })
+          }}
           onPicked={({ url, stream }) => {
             void navigate({
               to: '/watch/$mediaType/$id',

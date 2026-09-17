@@ -271,6 +271,29 @@ function TvPage(): React.JSX.Element {
           tmdbId={tvId}
           season={pickerSeason}
           episode={pickerEpisode}
+          year={
+            details.data.first_air_date
+              ? Number(details.data.first_air_date.slice(0, 4))
+              : undefined
+          }
+          onPickedWeb={({ stream }) => {
+            void navigate({
+              to: '/watch-web/$mediaType/$id',
+              params: { mediaType: 'tv', id: String(tvId) },
+              search: {
+                streamId: stream.id,
+                title: details.data.name,
+                episodeLabel,
+                poster: tmdbImage(details.data.poster_path, 'w342') ?? undefined,
+                imdbId,
+                year: details.data.first_air_date
+                  ? Number(details.data.first_air_date.slice(0, 4))
+                  : undefined,
+                season: pickerSeason,
+                episode: pickerEpisode
+              }
+            })
+          }}
           onPicked={({ url, stream }) => {
             void navigate({
               to: '/watch/$mediaType/$id',
