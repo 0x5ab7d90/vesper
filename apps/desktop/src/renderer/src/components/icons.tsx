@@ -502,3 +502,39 @@ export const ReturnIcon = (props: IconProps): React.JSX.Element => (
     </g>
   </svg>
 )
+
+export const ArrowUpRightIcon = (props: IconProps): React.JSX.Element => (
+  <svg {...base} {...props}>
+    <path
+      d="M7 17L17 7M17 7H9M17 7V15"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+export const ArrowUpIcon = (props: IconProps): React.JSX.Element => (
+  <svg {...base} {...props}>
+    <path
+      d="M12 19V5M12 5L6 11M12 5L18 11"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+export const ArrowDownIcon = (props: IconProps): React.JSX.Element => (
+  <svg {...base} {...props}>
+    <path
+      d="M12 5V19M12 19L6 13M12 19L18 13"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
