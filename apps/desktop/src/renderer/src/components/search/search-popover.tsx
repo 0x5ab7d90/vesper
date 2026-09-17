@@ -4,14 +4,22 @@ import { useNavigate } from '@tanstack/react-router'
 import { useQuery as useTanstackQuery } from '@tanstack/react-query'
 import { useMutation, useQuery as useConvexQuery } from 'convex/react'
 import { SearchInput } from '@renderer/components/ui/search-input'
-import { SkeletonSwap } from '@renderer/components/ui/skeleton-swap'
+import { Skeleton } from '@renderer/components/ui/skeleton'
 import { IconButton } from '@renderer/components/ui/icon-button'
 import { Avatar } from '@renderer/components/ui/avatar'
-import { CloseIcon, CmdIcon, ProjectsIcon, ReturnIcon } from '@renderer/components/icons'
-import { DropMascot } from '@renderer/components/brand/drop-mascot'
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ArrowUpRightIcon,
+  ChevronRightIcon,
+  CmdIcon,
+  ProjectsIcon,
+  ReturnIcon
+} from '@renderer/components/icons'
+import { MapDrop } from '@renderer/components/brand/map-drop'
 import { isMac } from '@renderer/lib/platform'
 import { cn } from '@renderer/lib/cn'
-import { searchMultiQuery } from '@renderer/lib/tmdb-queries'
+import { searchMultiQuery, trendingAllQuery } from '@renderer/lib/tmdb-queries'
 import {
   searchItemImage,
   searchItemTitle,
@@ -20,7 +28,7 @@ import {
   type TmdbSearchMultiItem
 } from '@renderer/lib/tmdb'
 import { api } from '@convex/_generated/api'
-import type { Doc, Id } from '@convex/_generated/dataModel'
+import type { Doc } from '@convex/_generated/dataModel'
 
 const DEBOUNCE_MS = 150
 
@@ -80,7 +88,7 @@ export function SearchControl({ onOpenChange }: SearchControlProps): React.JSX.E
           }}
           onFocus={() => setOpen(true)}
           className={open ? 'rounded-b-none' : ''}
-          trailing={<TrailingSlot open={open} showHint={query.length > 0} />}
+          trailing={<TrailingSlot open={open} />}
         />
       </div>
       <Popover.Root
@@ -137,6 +145,22 @@ function ControlledSearchInput({
   return <SearchInput {...props} ref={localRef} />
 }
 
+type CellKey = 'movie' | 'tv' | 'person' | 'user'
+
+const CELLS: { key: CellKey; title: string }[] = [
+  { key: 'movie', title: 'Movies' },
+  { key: 'tv', title: 'Series' },
+  { key: 'person', title: 'People' },
+  { key: 'user', title: 'Users' }
+]
+
+const PER_CELL = 3
+const NO_RECENTS: Doc<'searchHistory'>[] = []
+
+/* The palette: a row of recent chips, four fixed cells (movies, series, people, users)
+   that fill as you type but never move, and a footer that names the keys. At rest the
+   media cells show the week's trending titles and the people and user cells replay
+   recents, so the grid is never a set of empty headers. */
 const SearchBody = memo(function SearchBody({
   debounced,
   inputRef,
@@ -149,37 +173,77 @@ const SearchBody = memo(function SearchBody({
   const navigate = useNavigate()
   const isTyping = debounced.length > 0
 
-  const recents = useConvexQuery(api.search.recentSearches, { limit: 4 }) ?? []
+  const recents = useConvexQuery(api.search.recentSearches, { limit: 6 }) ?? NO_RECENTS
   const multi = useTanstackQuery(searchMultiQuery(debounced))
+  const trending = useTanstackQuery({ ...trendingAllQuery(), enabled: !isTyping })
   const users = useConvexQuery(api.search.searchUsers, isTyping ? { query: debounced } : 'skip')
 
   const recordHistory = useMutation(api.search.recordSearchHistory)
-  const removeHistory = useMutation(api.search.removeSearchHistoryItem)
-  const clearHistory = useMutation(api.search.clearSearchHistory)
 
-  const rows = useMemo<Row[]>(() => {
+  // One chip per title: a rewatch or a re-search should not mint a twin.
+  const chips = useMemo(() => {
+    const seen = new Set<string>()
+    return recents.filter((r) => {
+      const key = `${r.kind}:${r.tmdbId ?? r.username ?? r.title}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [recents])
+
+  const cells = useMemo<Record<CellKey, Row[]>>(() => {
+    const out: Record<CellKey, Row[]> = { movie: [], tv: [], person: [], user: [] }
     if (!isTyping) {
-      return recents.map((r) => ({ kind: 'recent', id: r._id, data: r }))
+      const t = (trending.data?.results ?? []) as TmdbSearchMultiItem[]
+      out.movie = t
+        .filter((r) => r.media_type === 'movie')
+        .slice(0, PER_CELL)
+        .map((r) => ({ kind: 'movie', id: `m-${r.id}`, data: r }))
+      out.tv = t
+        .filter((r) => r.media_type === 'tv')
+        .slice(0, PER_CELL)
+        .map((r) => ({ kind: 'tv', id: `t-${r.id}`, data: r }))
+      out.person = recents
+        .filter((r) => r.kind === 'person')
+        .slice(0, PER_CELL)
+        .map((r) => ({ kind: 'recent', id: r._id, data: r }))
+      out.user = recents
+        .filter((r) => r.kind === 'user')
+        .slice(0, PER_CELL)
+        .map((r) => ({ kind: 'recent', id: r._id, data: r }))
+      return out
     }
-    const all = (multi.data?.results ?? []).slice()
-    const sorted = all.sort((a, b) => b.popularity - a.popularity)
-    const movies = sorted.filter((r) => r.media_type === 'movie').slice(0, 3)
-    const tv = sorted.filter((r) => r.media_type === 'tv').slice(0, 3)
-    const people = sorted.filter((r) => r.media_type === 'person').slice(0, 2)
-    const userRows: Row[] = users?.map((u) => ({ kind: 'user', id: u._id, data: u })) ?? []
-    const result: Row[] = []
-    movies.forEach((m) => result.push({ kind: 'movie', id: `m-${m.id}`, data: m }))
-    tv.forEach((s) => result.push({ kind: 'tv', id: `t-${s.id}`, data: s }))
-    people.forEach((p) => result.push({ kind: 'person', id: `p-${p.id}`, data: p }))
-    result.push(...userRows)
-    return result
-  }, [isTyping, recents, multi.data, users])
+    const sorted = (multi.data?.results ?? []).slice().sort((a, b) => b.popularity - a.popularity)
+    out.movie = sorted
+      .filter((r) => r.media_type === 'movie')
+      .slice(0, PER_CELL)
+      .map((r) => ({ kind: 'movie', id: `m-${r.id}`, data: r }))
+    out.tv = sorted
+      .filter((r) => r.media_type === 'tv')
+      .slice(0, PER_CELL)
+      .map((r) => ({ kind: 'tv', id: `t-${r.id}`, data: r }))
+    out.person = sorted
+      .filter((r) => r.media_type === 'person')
+      .slice(0, PER_CELL)
+      .map((r) => ({ kind: 'person', id: `p-${r.id}`, data: r }))
+    out.user = (users ?? []).slice(0, PER_CELL).map((u) => ({ kind: 'user', id: u._id, data: u }))
+    return out
+  }, [isTyping, trending.data, multi.data, users, recents])
 
-  const [highlight, setHighlight] = useState(-1)
-  useEffect(() => {
-    setHighlight(-1)
-  }, [debounced, isTyping])
+  // Keyboard order walks the cells left to right, top to bottom.
+  const rows = useMemo<Row[]>(() => CELLS.flatMap((c) => cells[c.key]), [cells])
 
+  // The highlight is stamped with the query it belongs to, so a new query reads as
+  // "nothing highlighted" without an effect resetting state after render.
+  const [hl, setHl] = useState<{ q: string; i: number }>({ q: debounced, i: -1 })
+  const highlight = hl.q === debounced ? hl.i : -1
+  const setHighlight = (next: number | ((h: number) => number)): void =>
+    setHl((prev) => {
+      const cur = prev.q === debounced ? prev.i : -1
+      return { q: debounced, i: typeof next === 'function' ? next(cur) : next }
+    })
+
+  const pending = isTyping ? multi.isPending : trending.isPending
   const showNoResults = isTyping && !multi.isPending && rows.length === 0 && users?.length === 0
 
   const openRow = async (row: Row): Promise<void> => {
@@ -219,6 +283,11 @@ const SearchBody = memo(function SearchBody({
     }
   }
 
+  const seeAll = (): void => {
+    onClose()
+    void navigate({ to: '/search', search: { q: debounced } })
+  }
+
   useEffect(() => {
     const input = inputRef.current
     if (!input) return
@@ -236,8 +305,7 @@ const SearchBody = memo(function SearchBody({
       } else if (e.key === 'Enter') {
         e.preventDefault()
         if ((e.metaKey || e.ctrlKey) && isTyping) {
-          onClose()
-          void navigate({ to: '/search', search: { q: debounced } })
+          seeAll()
           return
         }
         if (highlight >= 0) {
@@ -252,182 +320,267 @@ const SearchBody = memo(function SearchBody({
     return () => input.removeEventListener('keydown', onKey)
   }, [rows, highlight, onClose, isTyping, debounced, navigate])
 
-  const movies = rows.filter((r): r is Extract<Row, { kind: 'movie' }> => r.kind === 'movie')
-  const tv = rows.filter((r): r is Extract<Row, { kind: 'tv' }> => r.kind === 'tv')
-  const people = rows.filter((r): r is Extract<Row, { kind: 'person' }> => r.kind === 'person')
-  const userRows = rows.filter((r): r is Extract<Row, { kind: 'user' }> => r.kind === 'user')
-
   const indexOf = (row: Row): number => rows.findIndex((r) => r.id === row.id)
-  const rowProps = (row: Row): { highlighted: boolean; onMouseEnter: () => void } => ({
-    highlighted: highlight >= 0 && indexOf(row) === highlight,
-    onMouseEnter: () => setHighlight(indexOf(row))
-  })
 
-  let body: React.ReactNode
-  if (!isTyping) {
-    body = (
-      <EmptyState
-        recents={recents}
-        rows={rows}
-        highlight={highlight}
-        setHighlight={setHighlight}
-        onOpenRow={openRow}
-        onRemoveRecent={async (id) => {
-          await removeHistory({ itemId: id })
-        }}
-        onClearRecents={async () => {
-          await clearHistory()
-        }}
-      />
-    )
-  } else {
-    body = (
-      <SkeletonSwap
-        ready={!multi.isPending}
-        reserve="auto"
-        label="Search results"
-        skeleton={<SkeletonState />}
-        className="scroll-hide min-h-0 overflow-y-auto overscroll-contain"
-      >
-        {showNoResults ? (
+  return (
+    <div className="flex max-h-[520px] flex-col overflow-hidden">
+      {chips.length > 0 ? (
+        <div className="flex shrink-0 flex-col gap-2 border-b border-white/[0.06] px-4 pt-3 pb-3">
+          <span className="text-[12px] leading-4 font-medium text-text-muted">Recent</span>
+          <div className="scroll-hide flex gap-1.5 overflow-x-hidden">
+            {chips.map((item) => (
+              <RecentChip
+                key={item._id}
+                item={item}
+                onClick={() => openRow({ kind: 'recent', id: item._id, data: item })}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="scroll-hide min-h-0 overflow-y-auto overscroll-contain" aria-busy={pending}>
+        {pending ? (
+          <GridSkeleton />
+        ) : showNoResults ? (
           <NoResultsState query={debounced} />
         ) : (
-          <div className="flex flex-col">
-            {movies.length > 0 ? (
-              <Section title="Movies">
-                {movies.map((row) => (
-                  <ResultRow
+          <div className="grid grid-cols-2">
+            {CELLS.map((cell, i) => (
+              <Cell
+                key={cell.key}
+                title={cell.title}
+                right={i % 2 === 0}
+                bottom={i < 2}
+                onOpenAll={isTyping ? seeAll : undefined}
+              >
+                {cells[cell.key].map((row) => (
+                  <PaletteRow
                     key={row.id}
-                    item={row.data}
-                    {...rowProps(row)}
+                    row={row}
+                    highlighted={highlight >= 0 && indexOf(row) === highlight}
+                    onMouseEnter={() => setHighlight(indexOf(row))}
                     onClick={() => openRow(row)}
                   />
                 ))}
-              </Section>
-            ) : null}
-            {tv.length > 0 ? (
-              <>
-                <Divider />
-                <Section title="Series">
-                  {tv.map((row) => (
-                    <ResultRow
-                      key={row.id}
-                      item={row.data}
-                      {...rowProps(row)}
-                      onClick={() => openRow(row)}
-                    />
-                  ))}
-                </Section>
-              </>
-            ) : null}
-            {people.length > 0 ? (
-              <>
-                <Divider />
-                <Section title="People">
-                  {people.map((row) => (
-                    <PersonRow
-                      key={row.id}
-                      item={row.data}
-                      {...rowProps(row)}
-                      onClick={() => openRow(row)}
-                    />
-                  ))}
-                </Section>
-              </>
-            ) : null}
-            {userRows.length > 0 ? (
-              <>
-                <Divider />
-                <Section title="Users">
-                  {userRows.map((row) => (
-                    <UserRow
-                      key={row.id}
-                      item={row.data}
-                      {...rowProps(row)}
-                      onClick={() => openRow(row)}
-                    />
-                  ))}
-                </Section>
-              </>
-            ) : null}
+              </Cell>
+            ))}
           </div>
         )}
-      </SkeletonSwap>
-    )
-  }
-
-  return <div className="flex max-h-[370px] flex-col overflow-hidden">{body}</div>
-})
-
-function EmptyState({
-  recents,
-  rows,
-  highlight,
-  setHighlight,
-  onOpenRow,
-  onRemoveRecent,
-  onClearRecents
-}: {
-  recents: Doc<'searchHistory'>[]
-  rows: Row[]
-  highlight: number
-  setHighlight: (i: number) => void
-  onOpenRow: (row: Row) => void
-  onRemoveRecent: (id: Id<'searchHistory'>) => void | Promise<void>
-  onClearRecents: () => void | Promise<void>
-}): React.JSX.Element {
-  if (recents.length === 0) {
-    return (
-      <div className="px-4 py-6 text-center text-[13px] font-medium text-text-tertiary">
-        Search movies, series, people, or users
       </div>
-    )
-  }
-  const indexOf = (row: Row): number => rows.findIndex((r) => r.id === row.id)
-  return (
-    <div className="scroll-hide flex min-h-0 flex-col overflow-y-auto">
-      <Section
-        title="Recent"
-        action={
+
+      <div className="flex shrink-0 items-center justify-between border-t border-white/[0.06] px-4 py-2.5 text-[12px] leading-4 font-medium text-text-muted">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <Key>
+              <ArrowUpIcon className="size-3" />
+            </Key>
+            <Key>
+              <ArrowDownIcon className="size-3" />
+            </Key>
+            Navigate
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Key>
+              <ReturnIcon className="size-3" />
+            </Key>
+            Select
+          </span>
+        </div>
+        {isTyping ? (
           <button
             type="button"
-            onClick={() => onClearRecents()}
-            className="bg-transparent text-[12px] leading-4 font-medium text-text-tertiary outline-none"
+            onClick={seeAll}
+            className="flex items-center gap-1.5 bg-transparent text-text-muted outline-none transition-colors duration-150 ease-out hover:text-text"
           >
-            Clear
+            See all results
+            <span className="flex items-center gap-0.5">
+              <Key>
+                {isMac ? <CmdIcon className="size-3" /> : <span className="text-[10px]">Ctrl</span>}
+              </Key>
+              <Key>
+                <ReturnIcon className="size-3" />
+              </Key>
+            </span>
           </button>
-        }
-      >
-        {recents.map((item) => {
-          const row: Row = { kind: 'recent', id: item._id, data: item }
-          const isHighlighted = highlight >= 0 && indexOf(row) === highlight
-          return (
-            <RecentRow
-              key={item._id}
-              item={item}
-              highlighted={isHighlighted}
-              onMouseEnter={() => setHighlight(indexOf(row))}
-              onClick={() => onOpenRow(row)}
-              onRemove={() => onRemoveRecent(item._id)}
-            />
-          )
-        })}
-      </Section>
+        ) : null}
+      </div>
+    </div>
+  )
+})
+
+function Key({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return (
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-[6px] bg-white/[0.06] px-1 font-sans text-text-tertiary">
+      {children}
+    </kbd>
+  )
+}
+
+function Cell({
+  title,
+  right,
+  bottom,
+  onOpenAll,
+  children
+}: {
+  title: string
+  right: boolean
+  bottom: boolean
+  onOpenAll?: () => void
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <div
+      className={cn(
+        'flex min-h-[148px] flex-col px-2 pt-2.5 pb-2',
+        right && 'border-r border-white/[0.06]',
+        bottom && 'border-b border-white/[0.06]'
+      )}
+    >
+      <div className="flex h-7 items-center justify-between px-2">
+        <span className="text-[12px] leading-4 font-medium text-text-muted">{title}</span>
+        {onOpenAll ? (
+          <button
+            type="button"
+            onClick={onOpenAll}
+            aria-label={`See all ${title.toLowerCase()}`}
+            className="flex size-5 items-center justify-center rounded-full bg-transparent text-text-muted outline-none transition-colors duration-150 ease-out hover:text-text"
+          >
+            <ArrowUpRightIcon className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+      <div className="flex flex-col">{children}</div>
     </div>
   )
 }
 
-function SkeletonState(): React.JSX.Element {
+function rowThumb(row: Row): { src?: string; circle: boolean; seed: string; alt: string } {
+  switch (row.kind) {
+    case 'recent': {
+      const circle = row.data.kind === 'person' || row.data.kind === 'user'
+      const src = row.data.posterPath
+        ? tmdbImage(row.data.posterPath, 'w154')
+        : (row.data.avatarUrl ?? undefined)
+      return { src, circle, seed: row.data.username ?? row.data.title, alt: row.data.title }
+    }
+    case 'movie':
+    case 'tv':
+    case 'person': {
+      const img = searchItemImage(row.data)
+      return {
+        src: img ? tmdbImage(img, 'w154') : undefined,
+        circle: row.kind === 'person',
+        seed: searchItemTitle(row.data),
+        alt: searchItemTitle(row.data)
+      }
+    }
+    case 'user':
+      return {
+        src: row.data.avatarUrl,
+        circle: true,
+        seed: row.data.username,
+        alt: row.data.displayName
+      }
+  }
+}
+
+function rowTitle(row: Row): string {
+  switch (row.kind) {
+    case 'recent':
+      return row.data.title
+    case 'user':
+      return row.data.displayName
+    default:
+      return searchItemTitle(row.data)
+  }
+}
+
+function PaletteRow({
+  row,
+  highlighted,
+  onMouseEnter,
+  onClick
+}: {
+  row: Row
+  highlighted: boolean
+  onMouseEnter: () => void
+  onClick: () => void
+}): React.JSX.Element {
+  const thumb = rowThumb(row)
   return (
-    <div className="flex flex-col gap-3 px-3 py-4">
-      <div className="h-3 w-20 rounded bg-white/[0.06]" />
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 py-1">
-          <div className="size-9 shrink-0 rounded-md bg-white/[0.06]" />
-          <div className="flex flex-1 flex-col gap-1.5">
-            <div className="h-3 w-2/3 rounded bg-white/[0.06]" />
-            <div className="h-2.5 w-1/3 rounded bg-white/[0.04]" />
+    <button
+      type="button"
+      onMouseEnter={onMouseEnter}
+      onClick={onClick}
+      className={cn(
+        'flex h-9 w-full items-center gap-2.5 rounded-lg bg-transparent px-2 text-left outline-none transition-colors duration-150 ease-out',
+        highlighted && 'bg-white/[0.06]'
+      )}
+    >
+      {thumb.circle ? (
+        <Avatar size="xs" shape="circle" src={thumb.src} alt={thumb.alt} seed={thumb.seed} />
+      ) : (
+        <span
+          className="size-5 shrink-0 overflow-hidden rounded-[5px] bg-surface-3 bg-cover bg-center"
+          style={thumb.src ? { backgroundImage: `url(${thumb.src})` } : undefined}
+          aria-hidden
+        />
+      )}
+      <span className="line-clamp-1 min-w-0 flex-1 text-[13px] leading-4 font-medium text-text">
+        {rowTitle(row)}
+      </span>
+      <ChevronRightIcon
+        className={cn(
+          'size-3.5 shrink-0 text-text-muted transition-opacity duration-150 ease-out',
+          highlighted ? 'opacity-100' : 'opacity-0'
+        )}
+      />
+    </button>
+  )
+}
+
+function RecentChip({
+  item,
+  onClick
+}: {
+  item: Doc<'searchHistory'>
+  onClick: () => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-7 shrink-0 items-center rounded-full bg-white/[0.06] px-2.5 text-[12px] leading-4 font-medium whitespace-nowrap text-text-secondary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.1] hover:text-text"
+    >
+      <span className="max-w-[160px] truncate">{item.title}</span>
+    </button>
+  )
+}
+
+/* Same footprint as the resting grid: four cells, a title, three rows. */
+function GridSkeleton(): React.JSX.Element {
+  return (
+    <div className="grid grid-cols-2">
+      {CELLS.map((cell, i) => (
+        <div
+          key={cell.key}
+          className={cn(
+            'flex min-h-[148px] flex-col px-2 pt-2.5 pb-2',
+            i % 2 === 0 && 'border-r border-white/[0.06]',
+            i < 2 && 'border-b border-white/[0.06]'
+          )}
+        >
+          <div className="flex h-7 items-center px-2">
+            <Skeleton className="h-3 w-14 rounded" />
           </div>
+          {Array.from({ length: PER_CELL }).map((_, j) => (
+            <div key={j} className="flex h-9 items-center gap-2.5 px-2">
+              <Skeleton className="size-5 shrink-0 rounded-[5px]" />
+              <Skeleton className="h-3 w-2/3 rounded" />
+            </div>
+          ))}
         </div>
       ))}
     </div>
@@ -436,12 +589,10 @@ function SkeletonState(): React.JSX.Element {
 
 function NoResultsState({ query }: { query: string }): React.JSX.Element {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-4 py-8 text-center">
-      <DropMascot mood="confused" size={72} />
+    <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
+      <MapDrop size={96} />
       <div className="flex flex-col gap-1">
-        <div className="text-[14px] font-semibold text-text">
-          No matches for &quot;{query}&quot;
-        </div>
+        <div className="text-[14px] font-medium text-text">No matches for &quot;{query}&quot;</div>
         <div className="text-[12px] font-medium text-text-tertiary">
           Try a different spelling or browse trending titles.
         </div>
@@ -450,107 +601,11 @@ function NoResultsState({ query }: { query: string }): React.JSX.Element {
   )
 }
 
-function Section({
-  title,
-  action,
-  children
-}: {
-  title: string
-  action?: React.ReactNode
-  children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <div className="flex flex-col py-2">
-      <div className="flex items-center justify-between px-4 py-1.5">
-        <span className="text-[11px] leading-[14px] font-bold tracking-[0.05em] text-text-muted uppercase">
-          {title}
-        </span>
-        {action}
-      </div>
-      <div className="flex flex-col">{children}</div>
-    </div>
-  )
-}
-
-function Divider(): React.JSX.Element {
-  return <div className="h-px w-full shrink-0 bg-white/[0.06]" />
-}
-
-function rowClass(highlighted: boolean): string {
-  return cn(
-    'flex w-full items-center gap-3 bg-transparent px-4 py-2 text-left outline-none transition-colors hover:bg-white/[0.04]',
-    highlighted && 'bg-white/[0.04]'
-  )
-}
-
-function RecentRow({
-  item,
-  highlighted,
-  onMouseEnter,
-  onClick,
-  onRemove
-}: {
-  item: Doc<'searchHistory'>
-  highlighted: boolean
-  onMouseEnter: () => void
-  onClick: () => void
-  onRemove: () => void
-}): React.JSX.Element {
-  const thumb = item.posterPath ? tmdbImage(item.posterPath, 'w154') : (item.avatarUrl ?? undefined)
-  return (
-    <div onMouseEnter={onMouseEnter} className={rowClass(highlighted)}>
-      <button
-        type="button"
-        onClick={onClick}
-        className="flex flex-1 items-center gap-3 bg-transparent text-left outline-none"
-      >
-        {item.kind === 'person' || item.kind === 'user' ? (
-          <Avatar
-            size="md"
-            shape="circle"
-            className="size-9"
-            src={thumb}
-            alt={item.title}
-            seed={item.username ?? item.title}
-          />
-        ) : (
-          <div
-            className="size-9 shrink-0 overflow-hidden rounded-md bg-surface-3 bg-cover bg-center"
-            style={thumb ? { backgroundImage: `url(${thumb})` } : undefined}
-          />
-        )}
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="line-clamp-1 text-[13px] leading-4 font-medium text-text">
-            {item.title}
-          </span>
-          {item.subtitle ? (
-            <span className="line-clamp-1 text-[12px] leading-4 font-medium text-text-muted">
-              {item.subtitle}
-            </span>
-          ) : null}
-        </div>
-      </button>
-      <button
-        type="button"
-        aria-label="Remove from recents"
-        onClick={(e) => {
-          e.stopPropagation()
-          onRemove()
-        }}
-        className="shrink-0 bg-transparent text-text-muted outline-none"
-      >
-        <CloseIcon className="size-3.5" />
-      </button>
-    </div>
-  )
-}
-
 /**
- * The right end of the search bar holds two things in one slot: the explore
- * shortcut at rest, and the ⌘↵ hint once you are typing. Cross-faded as an
- * icon swap so the bar never reflows between the two.
+ * The right end of the search bar holds the explore shortcut at rest and goes quiet
+ * once the palette is open, cross-faded as an icon swap so the bar never reflows.
  */
-function TrailingSlot({ open, showHint }: { open: boolean; showHint: boolean }): React.JSX.Element {
+function TrailingSlot({ open }: { open: boolean }): React.JSX.Element {
   const navigate = useNavigate()
   return (
     <span className="t-icon-swap shrink-0" data-state={open ? 'b' : 'a'}>
@@ -575,140 +630,8 @@ function TrailingSlot({ open, showHint }: { open: boolean; showHint: boolean }):
           <ProjectsIcon className="size-[19px]" />
         </IconButton>
       </span>
-      <span
-        className="t-icon pointer-events-none flex items-center justify-end pr-1.5"
-        data-icon="b"
-      >
-        {showHint ? <KbdHint /> : null}
-      </span>
+      <span className="t-icon pointer-events-none" data-icon="b" />
     </span>
-  )
-}
-
-function KbdHint(): React.JSX.Element {
-  return (
-    <span
-      className="pointer-events-none inline-flex shrink-0 items-center gap-1 text-text-muted"
-      aria-hidden
-    >
-      {isMac ? (
-        <CmdIcon className="size-3.5" />
-      ) : (
-        <span className="text-[11px] font-semibold">Ctrl</span>
-      )}
-      <ReturnIcon className="size-3.5" />
-    </span>
-  )
-}
-
-function ResultRow({
-  item,
-  highlighted,
-  onMouseEnter,
-  onClick
-}: {
-  item: TmdbSearchMultiItem
-  highlighted: boolean
-  onMouseEnter: () => void
-  onClick: () => void
-}): React.JSX.Element {
-  const img = searchItemImage(item)
-  const thumb = img ? tmdbImage(img, 'w154') : undefined
-  return (
-    <button
-      type="button"
-      onMouseEnter={onMouseEnter}
-      onClick={onClick}
-      className={rowClass(highlighted)}
-    >
-      <div
-        className="h-11 w-8 shrink-0 overflow-hidden rounded bg-surface-3 bg-cover bg-center"
-        style={thumb ? { backgroundImage: `url(${thumb})` } : undefined}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="line-clamp-1 text-[13px] leading-4 font-medium text-text">
-          {searchItemTitle(item)}
-        </span>
-        <span className="line-clamp-1 text-[12px] leading-4 font-medium text-text-tertiary">
-          {searchItemYear(item)}
-        </span>
-      </div>
-    </button>
-  )
-}
-
-function PersonRow({
-  item,
-  highlighted,
-  onMouseEnter,
-  onClick
-}: {
-  item: TmdbSearchMultiItem
-  highlighted: boolean
-  onMouseEnter: () => void
-  onClick: () => void
-}): React.JSX.Element {
-  const img = searchItemImage(item)
-  return (
-    <button
-      type="button"
-      onMouseEnter={onMouseEnter}
-      onClick={onClick}
-      className={rowClass(highlighted)}
-    >
-      <Avatar
-        size="md"
-        shape="circle"
-        src={img ? tmdbImage(img, 'w185') : undefined}
-        alt={searchItemTitle(item)}
-        seed={searchItemTitle(item)}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="line-clamp-1 text-[13px] leading-4 font-medium text-text">
-          {searchItemTitle(item)}
-        </span>
-        <span className="line-clamp-1 text-[12px] leading-4 font-medium text-text-tertiary">
-          {item.known_for_department || 'Person'}
-        </span>
-      </div>
-    </button>
-  )
-}
-
-function UserRow({
-  item,
-  highlighted,
-  onMouseEnter,
-  onClick
-}: {
-  item: Doc<'profiles'>
-  highlighted: boolean
-  onMouseEnter: () => void
-  onClick: () => void
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onMouseEnter={onMouseEnter}
-      onClick={onClick}
-      className={rowClass(highlighted)}
-    >
-      <Avatar
-        size="md"
-        shape="circle"
-        src={item.avatarUrl}
-        alt={item.displayName}
-        seed={item.username}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="line-clamp-1 text-[13px] leading-4 font-medium text-text">
-          {item.displayName}
-        </span>
-        <span className="line-clamp-1 text-[12px] leading-4 font-medium text-text-tertiary">
-          @{item.username}
-        </span>
-      </div>
-    </button>
   )
 }
 
