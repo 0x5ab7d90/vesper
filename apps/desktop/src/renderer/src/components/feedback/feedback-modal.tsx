@@ -6,7 +6,8 @@ import { AnimatePresence, m as motion } from 'motion/react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Avatar } from '@renderer/components/ui/avatar'
+import { HeartDrop } from '@renderer/components/brand/heart-drop'
+import { DitherCorner } from '@renderer/components/brand/dither-corner'
 import { Select } from '@renderer/components/ui/select'
 import { CloseIcon, CmdIcon, ReturnIcon } from '@renderer/components/icons'
 import { isMac } from '@renderer/lib/platform'
@@ -51,41 +52,10 @@ const TYPE_OPTIONS: { value: FeedbackType; label: string }[] = [
   { value: 'other', label: 'Other' }
 ]
 
-function AdminStack({
-  admins
-}: {
-  admins: Array<{ username: string; displayName: string; avatarUrl?: string }>
-}): React.JSX.Element {
-  const MAX = 5
-  const shown = admins.slice(0, MAX)
-  const extra = admins.length - shown.length
-  return (
-    <div className="flex items-center">
-      {shown.map((a, i) => (
-        <span
-          key={a.username}
-          className="-ml-2 inline-block rounded-full ring-[3px] ring-surface first:ml-0"
-          style={{ zIndex: shown.length - i }}
-        >
-          <Avatar
-            size="lg"
-            className="size-11"
-            alt={a.displayName}
-            seed={a.username}
-            src={a.avatarUrl}
-          />
-        </span>
-      ))}
-      {extra > 0 ? (
-        <span
-          className="-ml-2 inline-flex size-11 items-center justify-center rounded-full bg-surface-3 text-[12px] font-medium text-text ring-[3px] ring-surface"
-          aria-label={`${extra} more`}
-        >
-          +{extra}
-        </span>
-      ) : null}
-    </div>
-  )
+const PLACEHOLDER: Record<FeedbackType, string> = {
+  bug: 'What went wrong?',
+  feature: 'What should Vesper do?',
+  other: 'Write your message'
 }
 
 function detectPlatform(): string {
@@ -107,7 +77,6 @@ export function FeedbackModal({
 }): React.JSX.Element {
   const submit = useAction(api.feedback.submit)
   const me = useQuery(api.profiles.me)
-  const admins = useQuery(api.profiles.listAdmins)
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -125,6 +94,7 @@ export function FeedbackModal({
   })
 
   const message = watch('message')
+  const type = watch('type')
   const fieldError = errors.message?.message
   const shownError = serverError ?? (isSubmitted ? fieldError : undefined)
   const shakeRef = useErrorShake<HTMLSpanElement>(shownError)
@@ -183,138 +153,122 @@ export function FeedbackModal({
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={POP}
-            className="flex h-[380px] flex-col border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
+            className="relative flex h-[380px] flex-col border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
             style={squircleStyle('frame')}
           >
-            <AnimatePresence mode="wait" initial={false}>
-              {state === 'sent' ? (
-                <motion.div
-                  key="thanks"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                  className="flex min-h-0 flex-1 flex-col"
-                >
-                  <div className="flex shrink-0 items-center justify-end pb-1.5 pl-2.5 pr-1 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => onOpenChange(false)}
-                      aria-label="Close"
-                      className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white active:opacity-70"
-                    >
-                      <CloseIcon className="size-3" />
-                    </button>
-                  </div>
-                  <div
-                    className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 border border-white/[0.05] bg-surface px-8 text-center"
-                    style={squircleStyle('inset')}
+            <DitherCorner />
+            <div className="t-page-slide min-h-0 flex-1" data-page={state === 'sent' ? '2' : '1'}>
+              <div className="t-page flex flex-col" data-page-id="2">
+                <div className="flex shrink-0 items-center justify-end pb-1.5 pl-2.5 pr-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    aria-label="Close"
+                    className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white active:opacity-70"
                   >
-                    {admins && admins.length > 0 ? <AdminStack admins={admins} /> : null}
-                    <h2 className="text-[22px] leading-7 font-medium text-text">Thank you!</h2>
-                    <p className="text-[13px] leading-5 font-medium text-text-tertiary">
-                      We appreciate every message that helps us improve Vesper.
-                    </p>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="form"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-                  className="flex min-h-0 flex-1 flex-col"
+                    <CloseIcon className="size-3" />
+                  </button>
+                </div>
+                <div
+                  className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 border border-white/[0.05] bg-surface px-8 text-center"
+                  style={squircleStyle('inset')}
                 >
-                  <div className="flex shrink-0 items-center justify-between gap-2 pb-1.5 pl-2.5 pr-1 pt-1">
-                    <Controller
-                      name="type"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          ariaLabel="Feedback type"
-                          value={field.value}
-                          onChange={(v) => field.onChange(v as FeedbackType)}
-                          options={TYPE_OPTIONS}
-                        />
-                      )}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onOpenChange(false)}
-                      aria-label="Close"
-                      className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white active:opacity-70"
-                    >
-                      <CloseIcon className="size-3" />
-                    </button>
-                  </div>
-                  <span
-                    ref={shakeRef}
-                    className={cn(
-                      't-input flex min-h-0 flex-1 flex-col overflow-hidden border border-white/[0.05] bg-surface',
-                      shownError && 'is-error'
+                  <HeartDrop size={96} className="mb-1" />
+                  <h2 className="text-[22px] leading-7 font-medium text-text">Thank you!</h2>
+                  <p className="text-[13px] leading-5 font-medium text-text-tertiary">
+                    We appreciate every message that helps us improve Vesper.
+                  </p>
+                </div>
+              </div>
+              <div className="t-page flex flex-col" data-page-id="1">
+                <div className="flex shrink-0 items-center justify-between gap-2 pb-1.5 pl-2.5 pr-1 pt-1">
+                  <Controller
+                    name="type"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        ariaLabel="Feedback type"
+                        value={field.value}
+                        onChange={(v) => field.onChange(v as FeedbackType)}
+                        options={TYPE_OPTIONS}
+                      />
                     )}
-                    style={squircleStyle('inset')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onOpenChange(false)}
+                    aria-label="Close"
+                    className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white active:opacity-70"
                   >
-                    <textarea
-                      autoFocus
-                      {...register('message')}
-                      onKeyDown={onKey}
-                      placeholder="What's on your mind?"
-                      className="scroll-hide flex-1 resize-none bg-transparent px-4 pt-3.5 pb-3 text-[14px] leading-5 font-medium text-text outline-none placeholder:text-text-tertiary"
-                    />
-                    <AnimatePresence>
-                      {serverError ? (
-                        <motion.div
-                          key="error"
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
-                          transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
-                          className="px-4 pb-3"
-                        >
-                          <p className="line-clamp-2 text-[12px] leading-4 font-medium text-[#f08c8c]">
-                            {serverError}
-                          </p>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
+                    <CloseIcon className="size-3" />
+                  </button>
+                </div>
+                <span
+                  ref={shakeRef}
+                  className={cn(
+                    't-input flex min-h-0 flex-1 flex-col overflow-hidden border border-white/[0.05] bg-surface',
+                    shownError && 'is-error'
+                  )}
+                  style={squircleStyle('inset')}
+                >
+                  <textarea
+                    autoFocus
+                    {...register('message')}
+                    onKeyDown={onKey}
+                    placeholder={PLACEHOLDER[type]}
+                    className="scroll-hide flex-1 resize-none bg-transparent px-4 pt-3.5 pb-3 text-[14px] leading-5 font-medium text-text outline-none placeholder:text-text-tertiary"
+                  />
+                  <AnimatePresence>
+                    {serverError ? (
+                      <motion.div
+                        key="error"
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                        className="px-4 pb-3"
+                      >
+                        <p className="line-clamp-2 text-[12px] leading-4 font-medium text-[#f08c8c]">
+                          {serverError}
+                        </p>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </span>
+                <div className="flex shrink-0 items-center justify-between gap-3 px-2.5 pt-2 pb-1">
+                  <span
+                    className={cn(
+                      'text-[11px] leading-4 font-medium',
+                      fieldError && isSubmitted ? 'text-red-400' : 'text-text-muted'
+                    )}
+                  >
+                    {fieldError && isSubmitted
+                      ? fieldError
+                      : `${message.trim().length} / ${MAX_MSG}`}
                   </span>
-                  <div className="flex shrink-0 items-center justify-between gap-3 px-2.5 pt-2 pb-1">
-                    <span
-                      className={cn(
-                        'text-[11px] leading-4 font-medium',
-                        fieldError && isSubmitted ? 'text-red-400' : 'text-text-muted'
-                      )}
-                    >
-                      {fieldError && isSubmitted
-                        ? fieldError
-                        : `${message.trim().length} / ${MAX_MSG}`}
+                  <button
+                    type="button"
+                    onClick={() => void onSubmit()}
+                    disabled={!canSend}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] leading-4 font-medium text-black outline-none transition-opacity disabled:opacity-40'
+                    )}
+                  >
+                    <span className="leading-none whitespace-nowrap">
+                      {state === 'sending' ? 'Sending…' : 'Send to the Vesper team'}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => void onSubmit()}
-                      disabled={!canSend}
-                      className={cn(
-                        'inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] leading-4 font-medium text-black outline-none transition-opacity disabled:opacity-40'
+                    <span className="inline-flex items-center gap-1 text-black/45" aria-hidden>
+                      {isMac ? (
+                        <CmdIcon className="size-3.5" />
+                      ) : (
+                        <span className="text-[11px] font-medium">Ctrl</span>
                       )}
-                    >
-                      <span className="leading-none whitespace-nowrap">
-                        {state === 'sending' ? 'Sending…' : 'Send to the Vesper team'}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-black/45" aria-hidden>
-                        {isMac ? (
-                          <CmdIcon className="size-3.5" />
-                        ) : (
-                          <span className="text-[11px] font-medium">Ctrl</span>
-                        )}
-                        <ReturnIcon className="size-3.5" />
-                      </span>
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      <ReturnIcon className="size-3.5" />
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </Dialog.Popup>
       </Dialog.Portal>
