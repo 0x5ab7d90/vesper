@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
 import { Avatar } from '@renderer/components/ui/avatar'
 import { Button } from '@renderer/components/ui/button'
@@ -13,6 +13,7 @@ import {
 } from '@renderer/components/ui/context-menu'
 import { MenuDotsIcon } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/cn'
+import { openProfile } from '@renderer/lib/profile-modal'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 
@@ -210,13 +211,12 @@ function OutgoingList(): React.JSX.Element {
 }
 
 function AcceptedRow({ friend }: { friend: FriendRow }): React.JSX.Element {
-  const navigate = useNavigate()
   const unfriend = useMutation(api.friendships.unfriend)
   const block = useMutation(api.friendships.block)
   const [menuOpen, setMenuOpen] = useState(false)
 
   const goProfile = (): void => {
-    navigate({ to: '/user/$username', params: { username: friend.username } })
+    openProfile(friend.username)
   }
 
   return (

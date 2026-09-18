@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Menu } from '@base-ui/react/menu'
 import { useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
@@ -6,6 +7,7 @@ import { api } from '@convex/_generated/api'
 import { Avatar } from '@renderer/components/ui/avatar'
 import { PeopleGroupIcon, SettingsIcon, SignOutIcon, UserIcon } from '@renderer/components/icons'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
+import { openProfile } from '@renderer/lib/profile-modal'
 
 interface UserMenuProps {
   /** Told whenever the menu opens or closes, so the title bar can give up its drag region. */
@@ -17,6 +19,7 @@ export function UserMenu({ onOpenChange }: UserMenuProps): React.JSX.Element {
   const { signOut } = useAuthActions()
   const data = useQuery(api.profiles.me)
   const profile = data?.profile ?? null
+  const [open, setOpen] = useState(false)
   const user = data?.user ?? null
   const displayName = profile?.displayName ?? user?.name ?? 'Account'
   const username = profile?.username ?? null
@@ -30,11 +33,21 @@ export function UserMenu({ onOpenChange }: UserMenuProps): React.JSX.Element {
 
   const goProfile = (): void => {
     if (!username) return
-    navigate({ to: '/user/$username', params: { username } })
+    // Opening the modal doesn't count as a menu selection, so close the menu ourselves and
+    // tell the title bar, which only hears about changes the menu initiates.
+    setOpen(false)
+    onOpenChange?.(false)
+    openProfile(username)
   }
 
   return (
-    <Menu.Root onOpenChange={(next) => onOpenChange?.(next)}>
+    <Menu.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        onOpenChange?.(next)
+      }}
+    >
       <Menu.Trigger
         aria-label="Account menu"
         className="inline-flex shrink-0 items-center justify-center rounded-full bg-transparent outline-none"

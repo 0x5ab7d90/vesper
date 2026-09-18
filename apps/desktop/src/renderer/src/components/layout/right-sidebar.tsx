@@ -10,6 +10,7 @@ import { tmdbImage } from '@renderer/lib/tmdb'
 import { useInterpolatedProgress } from '@renderer/lib/use-interpolated-progress'
 import { useSmoothScroll } from '@renderer/hooks/use-smooth-scroll'
 import { cn } from '@renderer/lib/cn'
+import { openProfile } from '@renderer/lib/profile-modal'
 import { api } from '@convex/_generated/api'
 import type { FunctionReturnType } from 'convex/server'
 
@@ -46,12 +47,7 @@ export const RightSidebar = memo(function RightSidebar({
             <ul className={cn('flex flex-col')}>
               {rows.map((row) => (
                 <li key={row.userId}>
-                  <ActivityRow
-                    row={row}
-                    onClick={() =>
-                      navigate({ to: '/user/$username', params: { username: row.username } })
-                    }
-                  />
+                  <ActivityRow row={row} onClick={() => openProfile(row.username)} />
                 </li>
               ))}
             </ul>

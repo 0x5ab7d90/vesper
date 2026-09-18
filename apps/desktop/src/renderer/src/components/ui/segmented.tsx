@@ -23,7 +23,12 @@ export function Segmented<T extends string>({
   return (
     <div
       role="tablist"
-      className={cn('relative flex h-8 items-center rounded-full bg-white/[0.06] p-0.5', className)}
+      className={cn(
+        // Equal columns sized to the widest label, so the sliding highlight's
+        // (100% / n) width lines up with every tab.
+        'relative grid h-8 auto-cols-fr grid-flow-col items-center rounded-full bg-white/[0.06] p-0.5',
+        className
+      )}
     >
       <span
         aria-hidden
@@ -41,7 +46,7 @@ export function Segmented<T extends string>({
           aria-selected={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'relative z-10 flex h-7 flex-1 items-center justify-center rounded-full px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap outline-none transition-colors duration-200',
+            'relative z-10 flex h-7 items-center justify-center rounded-full px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap outline-none transition-colors duration-200',
             o.value === value ? 'text-black' : 'text-text-tertiary'
           )}
         >
