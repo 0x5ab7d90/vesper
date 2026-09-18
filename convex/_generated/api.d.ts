@@ -12,6 +12,7 @@ import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as comet from "../comet.js";
 import type * as crons from "../crons.js";
+import type * as devSeed from "../devSeed.js";
 import type * as fanart from "../fanart.js";
 import type * as feedback from "../feedback.js";
 import type * as friendships from "../friendships.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   comet: typeof comet;
   crons: typeof crons;
+  devSeed: typeof devSeed;
   fanart: typeof fanart;
   feedback: typeof feedback;
   friendships: typeof friendships;
