@@ -14,7 +14,8 @@ const URL_EXPIRES_SECONDS = 300
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
-  'image/webp': 'webp'
+  'image/webp': 'webp',
+  'image/gif': 'gif'
 }
 
 function getFiles(): Files {
@@ -28,22 +29,25 @@ function getFiles(): Files {
   })
 }
 
-function extFor(contentType: string): string {
+function extFor(contentType: string, allowGif: boolean): string {
   const ext = MIME_TO_EXT[contentType]
-  if (!ext) throw new Error(`Unsupported content type: ${contentType}`)
+  if (!ext || (ext === 'gif' && !allowGif)) {
+    throw new Error(`Unsupported content type: ${contentType}`)
+  }
   return ext
 }
 
 async function signFor(
   prefix: string,
   userId: string,
-  contentType: string
+  contentType: string,
+  allowGif = false
 ): Promise<{
   key: string
   url: string
   headers: Record<string, string>
 }> {
-  const key = `${prefix}/${userId}/${nanoid(12)}.${extFor(contentType)}`
+  const key = `${prefix}/${userId}/${nanoid(12)}.${extFor(contentType, allowGif)}`
   const files = getFiles()
   const signed = await files.signedUploadUrl(key, {
     expiresIn: URL_EXPIRES_SECONDS,
@@ -58,7 +62,7 @@ export const signAvatarUpload = action({
   handler: async (ctx, { contentType }) => {
     const userId = await getAuthUserId(ctx)
     if (userId === null) throw new Error('Not authenticated')
-    return await signFor(AVATAR_PREFIX, userId, contentType)
+    return await signFor(AVATAR_PREFIX, userId, contentType, true)
   }
 })
 
