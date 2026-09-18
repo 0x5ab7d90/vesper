@@ -21,7 +21,6 @@ import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedComingSoonRouteImport } from './routes/_authenticated/coming-soon'
 import { Route as AuthenticatedChangelogRouteImport } from './routes/_authenticated/changelog'
 import { Route as AuthenticatedWatchFightIdRouteImport } from './routes/_authenticated/watch-fight.$id'
-import { Route as AuthenticatedUserUsernameRouteImport } from './routes/_authenticated/user.$username'
 import { Route as AuthenticatedTvIdRouteImport } from './routes/_authenticated/tv.$id'
 import { Route as AuthenticatedPersonIdRouteImport } from './routes/_authenticated/person.$id'
 import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticated/movie.$id'
@@ -90,12 +89,6 @@ const AuthenticatedWatchFightIdRoute =
     path: '/watch-fight/$id',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedUserUsernameRoute =
-  AuthenticatedUserUsernameRouteImport.update({
-    id: '/user/$username',
-    path: '/user/$username',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedTvIdRoute = AuthenticatedTvIdRouteImport.update({
   id: '/tv/$id',
   path: '/tv/$id',
@@ -150,7 +143,6 @@ export interface FileRoutesByFullPath {
   '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/person/$id': typeof AuthenticatedPersonIdRoute
   '/tv/$id': typeof AuthenticatedTvIdRoute
-  '/user/$username': typeof AuthenticatedUserUsernameRoute
   '/watch-fight/$id': typeof AuthenticatedWatchFightIdRoute
   '/watch-web/$mediaType/$id': typeof AuthenticatedWatchWebMediaTypeIdRoute
   '/watch/$mediaType/$id': typeof AuthenticatedWatchMediaTypeIdRoute
@@ -171,7 +163,6 @@ export interface FileRoutesByTo {
   '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/person/$id': typeof AuthenticatedPersonIdRoute
   '/tv/$id': typeof AuthenticatedTvIdRoute
-  '/user/$username': typeof AuthenticatedUserUsernameRoute
   '/watch-fight/$id': typeof AuthenticatedWatchFightIdRoute
   '/watch-web/$mediaType/$id': typeof AuthenticatedWatchWebMediaTypeIdRoute
   '/watch/$mediaType/$id': typeof AuthenticatedWatchMediaTypeIdRoute
@@ -194,7 +185,6 @@ export interface FileRoutesById {
   '/_authenticated/movie/$id': typeof AuthenticatedMovieIdRoute
   '/_authenticated/person/$id': typeof AuthenticatedPersonIdRoute
   '/_authenticated/tv/$id': typeof AuthenticatedTvIdRoute
-  '/_authenticated/user/$username': typeof AuthenticatedUserUsernameRoute
   '/_authenticated/watch-fight/$id': typeof AuthenticatedWatchFightIdRoute
   '/_authenticated/watch-web/$mediaType/$id': typeof AuthenticatedWatchWebMediaTypeIdRoute
   '/_authenticated/watch/$mediaType/$id': typeof AuthenticatedWatchMediaTypeIdRoute
@@ -217,7 +207,6 @@ export interface FileRouteTypes {
     | '/movie/$id'
     | '/person/$id'
     | '/tv/$id'
-    | '/user/$username'
     | '/watch-fight/$id'
     | '/watch-web/$mediaType/$id'
     | '/watch/$mediaType/$id'
@@ -238,7 +227,6 @@ export interface FileRouteTypes {
     | '/movie/$id'
     | '/person/$id'
     | '/tv/$id'
-    | '/user/$username'
     | '/watch-fight/$id'
     | '/watch-web/$mediaType/$id'
     | '/watch/$mediaType/$id'
@@ -260,7 +248,6 @@ export interface FileRouteTypes {
     | '/_authenticated/movie/$id'
     | '/_authenticated/person/$id'
     | '/_authenticated/tv/$id'
-    | '/_authenticated/user/$username'
     | '/_authenticated/watch-fight/$id'
     | '/_authenticated/watch-web/$mediaType/$id'
     | '/_authenticated/watch/$mediaType/$id'
@@ -359,13 +346,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWatchFightIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/user/$username': {
-      id: '/_authenticated/user/$username'
-      path: '/user/$username'
-      fullPath: '/user/$username'
-      preLoaderRoute: typeof AuthenticatedUserUsernameRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/tv/$id': {
       id: '/_authenticated/tv/$id'
       path: '/tv/$id'
@@ -431,7 +411,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMovieIdRoute: typeof AuthenticatedMovieIdRoute
   AuthenticatedPersonIdRoute: typeof AuthenticatedPersonIdRoute
   AuthenticatedTvIdRoute: typeof AuthenticatedTvIdRoute
-  AuthenticatedUserUsernameRoute: typeof AuthenticatedUserUsernameRoute
   AuthenticatedWatchFightIdRoute: typeof AuthenticatedWatchFightIdRoute
   AuthenticatedWatchWebMediaTypeIdRoute: typeof AuthenticatedWatchWebMediaTypeIdRoute
   AuthenticatedWatchMediaTypeIdRoute: typeof AuthenticatedWatchMediaTypeIdRoute
@@ -450,7 +429,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMovieIdRoute: AuthenticatedMovieIdRoute,
   AuthenticatedPersonIdRoute: AuthenticatedPersonIdRoute,
   AuthenticatedTvIdRoute: AuthenticatedTvIdRoute,
-  AuthenticatedUserUsernameRoute: AuthenticatedUserUsernameRoute,
   AuthenticatedWatchFightIdRoute: AuthenticatedWatchFightIdRoute,
   AuthenticatedWatchWebMediaTypeIdRoute: AuthenticatedWatchWebMediaTypeIdRoute,
   AuthenticatedWatchMediaTypeIdRoute: AuthenticatedWatchMediaTypeIdRoute,
