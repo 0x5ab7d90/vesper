@@ -13,6 +13,11 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
+declare module 'virtual:ort-loader' {
+  const source: string
+  export default source
+}
+
 declare module '*.mdx' {
   import type { ComponentType } from 'react'
   const Component: ComponentType<{ components?: Record<string, unknown> }>

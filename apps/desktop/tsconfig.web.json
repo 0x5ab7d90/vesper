@@ -17,6 +17,9 @@
       ],
       "@convex/*": [
         "../../convex/*"
+      ],
+      "@ort/*": [
+        "node_modules/onnxruntime-web/dist/*"
       ]
     }
   }

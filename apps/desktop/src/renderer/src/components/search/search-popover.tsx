@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { Popover } from '@base-ui/react/popover'
+import { VoiceBeam } from 'voice-glow'
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery as useTanstackQuery } from '@tanstack/react-query'
 import { useMutation, useQuery as useConvexQuery } from 'convex/react'
@@ -13,10 +14,12 @@ import {
   ArrowUpRightIcon,
   ChevronRightIcon,
   CmdIcon,
+  MicIcon,
   ProjectsIcon,
   ReturnIcon
 } from '@renderer/components/icons'
 import { MapDrop } from '@renderer/components/brand/map-drop'
+import { useVoiceSearch, type VoiceSearch } from '@renderer/hooks/use-voice-search'
 import { isMac } from '@renderer/lib/platform'
 import { cn } from '@renderer/lib/cn'
 import { searchMultiQuery, trendingAllQuery } from '@renderer/lib/tmdb-queries'
@@ -51,10 +54,20 @@ export function SearchControl({ onOpenChange }: SearchControlProps): React.JSX.E
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query.trim(), DEBOUNCE_MS)
 
+  // A finished take lands in the field like typed text: the query updates, the
+  // palette fills, the caret waits at the end for a correction.
+  const voice = useVoiceSearch((text) => {
+    setQuery(text)
+    setOpen(true)
+    inputRef.current?.focus()
+  })
+  const cancelVoice = voice.cancel
+
   const onClose = useCallback((): void => {
+    cancelVoice()
     setOpen(false)
     inputRef.current?.blur()
-  }, [])
+  }, [cancelVoice])
 
   // Reported from one place so every route into the state, focus, typing, Escape, an outside
   // press, opening a row, is announced the same way.
@@ -64,17 +77,26 @@ export function SearchControl({ onOpenChange }: SearchControlProps): React.JSX.E
 
   useConvexQuery(api.search.recentSearches, { limit: 4 })
 
+  // Both chords work from anywhere in the app. Cmd/Ctrl+M opens the palette on its way
+  // to the microphone, so a voice search is one keypress from any page.
+  const toggleVoice = voice.toggle
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key === 'k') {
         e.preventDefault()
         inputRef.current?.focus()
         inputRef.current?.select()
+      } else if (key === 'm') {
+        e.preventDefault()
+        inputRef.current?.focus()
+        toggleVoice()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [toggleVoice])
 
   return (
     <>
@@ -88,7 +110,8 @@ export function SearchControl({ onOpenChange }: SearchControlProps): React.JSX.E
           }}
           onFocus={() => setOpen(true)}
           className={open ? 'rounded-b-none' : ''}
-          trailing={<TrailingSlot open={open} />}
+          {...(voice.status === 'listening' ? { placeholder: 'Listening…' } : {})}
+          trailing={<TrailingSlot open={open} voice={voice} />}
         />
       </div>
       <Popover.Root
@@ -124,7 +147,12 @@ export function SearchControl({ onOpenChange }: SearchControlProps): React.JSX.E
               finalFocus={false}
             >
               {open ? (
-                <SearchBody debounced={debounced} inputRef={inputRef} onClose={onClose} />
+                <SearchBody
+                  debounced={debounced}
+                  inputRef={inputRef}
+                  onClose={onClose}
+                  voice={voice}
+                />
               ) : null}
             </Popover.Popup>
           </Popover.Positioner>
@@ -164,11 +192,13 @@ const NO_RECENTS: Doc<'searchHistory'>[] = []
 const SearchBody = memo(function SearchBody({
   debounced,
   inputRef,
-  onClose
+  onClose,
+  voice
 }: {
   debounced: string
   inputRef: React.MutableRefObject<HTMLInputElement | null>
   onClose: () => void
+  voice: VoiceSearch
 }): React.JSX.Element {
   const navigate = useNavigate()
   const isTyping = debounced.length > 0
@@ -292,6 +322,18 @@ const SearchBody = memo(function SearchBody({
     const input = inputRef.current
     if (!input) return
     const onKey = (e: KeyboardEvent): void => {
+      if (voice.status === 'listening') {
+        // While the microphone is open, Enter ends the take and Escape throws it away.
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          voice.toggle()
+          return
+        }
+        if (e.key === 'Escape') {
+          voice.cancel()
+          return
+        }
+      }
       if (e.key === 'Escape') {
         onClose()
         return
@@ -318,12 +360,23 @@ const SearchBody = memo(function SearchBody({
     }
     input.addEventListener('keydown', onKey)
     return () => input.removeEventListener('keydown', onKey)
-  }, [rows, highlight, onClose, isTyping, debounced, navigate])
+  }, [rows, highlight, onClose, isTyping, debounced, navigate, voice])
 
   const indexOf = (row: Row): number => rows.findIndex((r) => r.id === row.id)
 
+  const voiceBusy = voice.status !== 'idle'
+  const footerStatus = voice.status === 'listening' || voice.status === 'message'
+
   return (
-    <div className="flex max-h-[520px] flex-col overflow-hidden">
+    <VoiceBeam
+      stream={voice.stream}
+      active={voiceBusy}
+      processing={voice.status === 'loading' || voice.status === 'transcribing'}
+      theme="dark"
+      colorVariant="ocean"
+      borderRadius={18}
+      className="flex max-h-[520px] flex-col overflow-hidden"
+    >
       {chips.length > 0 ? (
         <div className="flex shrink-0 flex-col gap-2 border-b border-white/[0.06] px-4 pt-3 pb-3">
           <span className="text-[12px] leading-4 font-medium text-text-muted">Recent</span>
@@ -370,23 +423,31 @@ const SearchBody = memo(function SearchBody({
       </div>
 
       <div className="flex shrink-0 items-center justify-between border-t border-white/[0.06] px-4 py-2.5 text-[12px] leading-4 font-medium text-text-muted">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5">
-            <Key>
-              <ArrowUpIcon className="size-3" />
-            </Key>
-            <Key>
-              <ArrowDownIcon className="size-3" />
-            </Key>
-            Navigate
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Key>
-              <ReturnIcon className="size-3" />
-            </Key>
-            Select
-          </span>
-        </div>
+        {footerStatus ? (
+          <VoiceStatus voice={voice} />
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <Key>
+                <ArrowUpIcon className="size-3" />
+              </Key>
+              <Key>
+                <ArrowDownIcon className="size-3" />
+              </Key>
+              Navigate
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Key>
+                <ReturnIcon className="size-3" />
+              </Key>
+              Select
+            </span>
+            <span className="flex items-center gap-1.5">
+              <VoiceKeys />
+              Voice
+            </span>
+          </div>
+        )}
         {isTyping ? (
           <button
             type="button"
@@ -405,9 +466,52 @@ const SearchBody = memo(function SearchBody({
           </button>
         ) : null}
       </div>
-    </div>
+    </VoiceBeam>
   )
 })
+
+/* The chord that opens the microphone, drawn the way the footer draws every key. */
+function VoiceKeys(): React.JSX.Element {
+  return (
+    <span className="flex items-center gap-0.5">
+      <Key>
+        {isMac ? <CmdIcon className="size-3" /> : <span className="text-[10px]">Ctrl</span>}
+      </Key>
+      <Key>
+        <span className="text-[10px]">M</span>
+      </Key>
+    </span>
+  )
+}
+
+/* While the microphone is open the footer names the two keys that matter; while the
+   model works, the glow carries the state and the footer stays as it was. Nothing
+   here animates in or out: the hotkey is used constantly. */
+function VoiceStatus({ voice }: { voice: VoiceSearch }): React.JSX.Element | null {
+  switch (voice.status) {
+    case 'listening':
+      return (
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <Key>
+              <ReturnIcon className="size-3" />
+            </Key>
+            Done
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Key>
+              <span className="text-[10px]">Esc</span>
+            </Key>
+            Cancel
+          </span>
+        </div>
+      )
+    case 'message':
+      return <span role="status">{voice.message}</span>
+    default:
+      return null
+  }
+}
 
 function Key({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
@@ -605,8 +709,9 @@ function NoResultsState({ query }: { query: string }): React.JSX.Element {
  * The right end of the search bar holds the explore shortcut at rest and goes quiet
  * once the palette is open, cross-faded as an icon swap so the bar never reflows.
  */
-function TrailingSlot({ open }: { open: boolean }): React.JSX.Element {
+function TrailingSlot({ open, voice }: { open: boolean; voice: VoiceSearch }): React.JSX.Element {
   const navigate = useNavigate()
+  const listening = voice.status === 'listening'
   return (
     <span className="t-icon-swap shrink-0" data-state={open ? 'b' : 'a'}>
       <span
@@ -630,7 +735,28 @@ function TrailingSlot({ open }: { open: boolean }): React.JSX.Element {
           <ProjectsIcon className="size-[19px]" />
         </IconButton>
       </span>
-      <span className="t-icon pointer-events-none" data-icon="b" />
+      <span
+        className={cn('t-icon flex items-center', !open && 'pointer-events-none')}
+        data-icon="b"
+        aria-hidden={!open}
+      >
+        <IconButton
+          variant="ghost"
+          aria-label={listening ? 'Stop listening' : 'Search by voice'}
+          aria-pressed={listening}
+          tabIndex={-1}
+          onClick={(e) => {
+            e.preventDefault()
+            voice.toggle()
+          }}
+          className={cn(
+            'size-9 rounded-lg transition-[color,opacity] duration-150 ease-out hover:text-text',
+            listening && 'text-text'
+          )}
+        >
+          <MicIcon className="size-[19px]" />
+        </IconButton>
+      </span>
     </span>
   )
 }

@@ -538,3 +538,25 @@ export const ArrowDownIcon = (props: IconProps): React.JSX.Element => (
     />
   </svg>
 )
+
+export const MicIcon = (props: IconProps): React.JSX.Element => (
+  <svg {...base} {...props}>
+    <rect
+      x="9"
+      y="3"
+      width="6"
+      height="11"
+      rx="3"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
