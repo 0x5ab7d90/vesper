@@ -7,7 +7,8 @@ import {
   screen,
   clipboard,
   dialog,
-  nativeImage
+  nativeImage,
+  Menu
 } from 'electron'
 import { join, basename, extname, resolve } from 'path'
 import { promises as fsp, existsSync, readFileSync, writeFileSync } from 'fs'
@@ -407,6 +408,19 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('sh.mirae.app')
+
+  // Electron's stock macOS menu binds Cmd+M to minimize, which would swallow the voice
+  // search chord before the renderer sees it. Rebuild the menu without that item.
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        { role: 'appMenu' },
+        { role: 'editMenu' },
+        { role: 'viewMenu' },
+        { label: 'Window', submenu: [{ role: 'zoom' }, { role: 'front' }, { role: 'close' }] }
+      ])
+    )
+  }
 
   session.defaultSession.webRequest.onHeadersReceived(
     {
