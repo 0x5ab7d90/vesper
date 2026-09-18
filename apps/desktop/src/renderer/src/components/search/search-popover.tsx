@@ -22,6 +22,7 @@ import { MapDrop } from '@renderer/components/brand/map-drop'
 import { useVoiceSearch, type VoiceSearch } from '@renderer/hooks/use-voice-search'
 import { isMac } from '@renderer/lib/platform'
 import { cn } from '@renderer/lib/cn'
+import { openProfile } from '@renderer/lib/profile-modal'
 import { searchMultiQuery, trendingAllQuery } from '@renderer/lib/tmdb-queries'
 import {
   searchItemImage,
@@ -815,7 +816,7 @@ function navigateTo(
   } else if (kind === 'person' && tmdbId) {
     navigate({ to: '/person/$id', params: { id: String(tmdbId) }, viewTransition: false })
   } else if (kind === 'user' && username) {
-    navigate({ to: '/user/$username', params: { username }, viewTransition: false })
+    openProfile(username)
   }
 }
 

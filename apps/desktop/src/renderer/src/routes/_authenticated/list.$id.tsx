@@ -10,6 +10,7 @@ import { IconButton } from '@renderer/components/ui/icon-button'
 import { ExpandingSearch } from '@renderer/components/ui/expanding-search'
 import { MenuDotsIcon } from '@renderer/components/icons'
 import { movieDetailsQuery, tvDetailsQuery } from '@renderer/lib/tmdb-queries'
+import { openProfile } from '@renderer/lib/profile-modal'
 import { tmdbImage } from '@renderer/lib/tmdb'
 import { api } from '@convex/_generated/api'
 import type { Doc, Id } from '@convex/_generated/dataModel'
@@ -199,14 +200,13 @@ function ListHeader({
         <div className="flex items-center justify-between gap-4 pt-1">
           <div className="flex items-center gap-2 text-[12px] leading-4 font-medium text-text-tertiary">
             {ownerUsername ? (
-              <Link
-                to="/user/$username"
-                params={{ username: ownerUsername }}
-                viewTransition={false}
-                className="outline-none"
+              <button
+                type="button"
+                onClick={() => openProfile(ownerUsername)}
+                className="bg-transparent outline-none"
               >
                 {ownerNode}
-              </Link>
+              </button>
             ) : (
               ownerNode
             )}

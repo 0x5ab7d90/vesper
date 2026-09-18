@@ -13,6 +13,7 @@ import {
 import { ListsSubmenuBody } from '@renderer/components/library/media-context-menu'
 import { ListFormModal } from '@renderer/components/library/list-form-modal'
 import { shareUrlForMovie, shareUrlForTv, shareUrlForUser } from '@renderer/lib/share-url'
+import { openProfile } from '@renderer/lib/profile-modal'
 
 interface FriendPlayback {
   tmdbId?: number
@@ -34,10 +35,6 @@ export function FriendContextMenu({
 }: FriendContextMenuProps): React.JSX.Element {
   const navigate = useNavigate()
   const [newListOpen, setNewListOpen] = useState(false)
-
-  const openProfile = (): void => {
-    navigate({ to: '/user/$username', params: { username }, viewTransition: false })
-  }
 
   const copyProfileLink = (): void => {
     void navigator.clipboard?.writeText(shareUrlForUser(username)).catch(() => {})
@@ -66,7 +63,11 @@ export function FriendContextMenu({
   return (
     <>
       <ContextMenuRoot trigger={children}>
-        <ContextMenuItem icon={<InfoGlyph />} label="View profile" onClick={openProfile} />
+        <ContextMenuItem
+          icon={<InfoGlyph />}
+          label="View profile"
+          onClick={() => openProfile(username)}
+        />
         <ContextMenuItem
           icon={<ShareGlyph />}
           label="Copy profile link"

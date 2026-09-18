@@ -5,6 +5,7 @@ import 'allotment/dist/style.css'
 import { TopBar } from '@renderer/components/layout/top-bar'
 import { LeftSidebar } from '@renderer/components/layout/left-sidebar'
 import { RightSidebar } from '@renderer/components/layout/right-sidebar'
+import { ProfileModal } from '@renderer/components/profile/profile-modal'
 import { popularMoviesQuery, trendingTvQuery } from '@renderer/lib/tmdb-queries'
 import { usePersistedState } from '@renderer/hooks/use-persisted-state'
 import { useSmoothScroll } from '@renderer/hooks/use-smooth-scroll'
@@ -265,6 +266,7 @@ function AuthedLayout(): React.JSX.Element {
           </Allotment.Pane>
         </Allotment>
       </div>
+      <ProfileModal />
     </div>
   )
 }

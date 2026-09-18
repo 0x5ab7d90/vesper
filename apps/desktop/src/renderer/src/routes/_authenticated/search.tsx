@@ -1,5 +1,4 @@
-import { useRef } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useQuery as useTanstackQuery } from '@tanstack/react-query'
 import { useQuery as useConvexQuery, useMutation } from 'convex/react'
 import { Button as BaseButton } from '@base-ui/react/button'
@@ -10,7 +9,7 @@ import { PosterRow, type PosterRowItem } from '@renderer/components/media/poster
 import { CastCard } from '@renderer/components/media/cast-card'
 import { searchMoviesQuery, searchPeopleQuery, searchTvQuery } from '@renderer/lib/tmdb-queries'
 import { tmdbImage } from '@renderer/lib/tmdb'
-import { usePreloadRoute } from '@renderer/lib/use-preload-route'
+import { openProfile } from '@renderer/lib/profile-modal'
 import { api } from '@convex/_generated/api'
 import type { Doc } from '@convex/_generated/dataModel'
 
@@ -25,8 +24,6 @@ function SearchPage(): React.JSX.Element {
   const { q } = Route.useSearch()
   const query = (q ?? '').trim()
   const recordHistory = useMutation(api.search.recordSearchHistory)
-  const navigate = useNavigate()
-
   const movies = useTanstackQuery(searchMoviesQuery(query))
   const tv = useTanstackQuery(searchTvQuery(query))
   const people = useTanstackQuery(searchPeopleQuery(query))
@@ -128,11 +125,7 @@ function SearchPage(): React.JSX.Element {
                         subtitle: `@${u.username}`,
                         avatarUrl: u.avatarUrl
                       })
-                      navigate({
-                        to: '/user/$username',
-                        params: { username: u.username },
-                        viewTransition: false
-                      })
+                      openProfile(u.username)
                     }}
                   />
                 ))}
@@ -152,11 +145,8 @@ function UserCard({
   user: Doc<'profiles'>
   onClick: () => void
 }): React.JSX.Element {
-  const ref = useRef<HTMLButtonElement>(null)
-  usePreloadRoute(ref, { to: '/user/$username', params: { username: user.username } })
   return (
     <BaseButton
-      ref={ref}
       onClick={onClick}
       className="flex w-[100px] shrink-0 flex-col items-center gap-2 bg-transparent text-center outline-none"
       aria-label={user.displayName}
