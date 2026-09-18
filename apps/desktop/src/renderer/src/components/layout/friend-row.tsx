@@ -60,21 +60,18 @@ function Avatar({
   avatarUrl,
   glassSeed,
   size,
-  rounded = 'full',
   dotSize
 }: {
   avatarUrl?: string
   glassSeed: string
   size: number
-  rounded?: 'full' | 'square'
   dotSize?: { status: FriendStatus; size: number }
 }): React.JSX.Element {
   const src = avatarUrl ?? glassUrl(glassSeed)
-  const radiusClass = rounded === 'full' ? 'rounded-full' : 'rounded-[14px]'
-  const dotOffset = dotSize && dotSize.size <= 10 ? -2 : -3
+  const dotOffset = dotSize && dotSize.size <= 10 ? -2 : 0
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
-      <img src={src} alt="" aria-hidden className={cn('h-full w-full object-cover', radiusClass)} />
+      <img src={src} alt="" aria-hidden className="h-full w-full rounded-full object-cover" />
       {dotSize ? (
         <StatusDot
           status={dotSize.status}
@@ -121,7 +118,6 @@ export function FriendRow({
           avatarUrl={avatarUrl}
           glassSeed={glassSeed}
           size={56}
-          rounded="square"
           dotSize={{ status, size: 14 }}
         />
       )}
