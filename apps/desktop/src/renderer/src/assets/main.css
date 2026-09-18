@@ -10,6 +10,14 @@
     corner-shape: squircle;
   }
 
+  /* Pill radii stay true circles: avatars, presence dots, and other rounded-full
+     elements would otherwise render as squircles. */
+  .rounded-full,
+  .rounded-full::before,
+  .rounded-full::after {
+    corner-shape: round;
+  }
+
   button:not(:disabled),
   [role='button']:not([data-disabled]),
   [role='menuitem']:not([data-disabled]),
