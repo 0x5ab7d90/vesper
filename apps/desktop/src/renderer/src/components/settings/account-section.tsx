@@ -11,7 +11,11 @@ import { TextField } from '@renderer/components/ui/text-field'
 import { TextArea } from '@renderer/components/ui/text-area'
 import { CheckCircleIcon, ImageEditIcon } from '@renderer/components/icons'
 import { CropModal } from '@renderer/components/settings/crop-modal'
-import { uploadProfileImage } from '@renderer/lib/image-upload'
+import {
+  ALLOWED_AVATAR_TYPES,
+  MAX_AVATAR_UPLOAD_BYTES,
+  uploadProfileImage
+} from '@renderer/lib/image-upload'
 import {
   BIO_MAX,
   bioSchema,
@@ -244,10 +248,26 @@ function AvatarSection({
   const remove = useMutation(api.profiles.removeAvatar)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const [gifError, setGifError] = useState<string | null>(null)
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const f = e.target.files?.[0]
     e.target.value = ''
     if (!f) return
+    setGifError(null)
+    if (f.type === 'image/gif') {
+      // Cropping through a canvas would flatten the GIF to one frame, so upload it as-is.
+      if (f.size > MAX_AVATAR_UPLOAD_BYTES) {
+        setGifError('Max 10 MB')
+        return
+      }
+      try {
+        await uploadProfileImage(convex, 'avatar', f)
+      } catch (err) {
+        setGifError(err instanceof Error ? err.message : 'Upload failed')
+      }
+      return
+    }
     setFile(f)
     setOpen(true)
   }
@@ -268,8 +288,9 @@ function AvatarSection({
       <div className="flex flex-1 flex-col">
         <span className="text-[14px] font-semibold text-text">Profile picture</span>
         <span className="text-[12px] font-medium text-text-tertiary">
-          PNG or JPG, 400×400+ recommended
+          PNG, JPG, or GIF, 400×400+ recommended
         </span>
+        {gifError ? <span className="text-[12px] font-medium text-red-400">{gifError}</span> : null}
       </div>
       <div className="flex items-center gap-2">
         <Button
@@ -294,7 +315,7 @@ function AvatarSection({
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept={ALLOWED_AVATAR_TYPES.join(',')}
         className="hidden"
         onChange={handleFile}
       />

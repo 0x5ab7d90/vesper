@@ -7,6 +7,7 @@ import { Ring } from '@renderer/components/ui/spinner'
 import { SquircleSurface } from '@renderer/components/ui/squircle-surface'
 import {
   ALLOWED_TYPES,
+  MAX_AVATAR_UPLOAD_BYTES,
   MAX_UPLOAD_BYTES,
   cropAndEncode,
   type UploadKind
@@ -55,8 +56,9 @@ export function CropModal({
       setError('Use PNG, JPEG, or WEBP')
       return
     }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setError('Max 5 MB')
+    const maxBytes = kind === 'avatar' ? MAX_AVATAR_UPLOAD_BYTES : MAX_UPLOAD_BYTES
+    if (file.size > maxBytes) {
+      setError(`Max ${maxBytes / (1024 * 1024)} MB`)
       return
     }
     setError(null)
@@ -69,7 +71,7 @@ export function CropModal({
       URL.revokeObjectURL(url)
       objectUrlRef.current = null
     }
-  }, [file, open])
+  }, [file, open, kind])
 
   const handleCropComplete = useCallback((_: Area, area: Area) => {
     setCropArea(area)

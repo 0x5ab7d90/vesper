@@ -2,7 +2,10 @@ import { ConvexReactClient } from 'convex/react'
 import { api } from '@convex/_generated/api'
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+export const MAX_AVATAR_UPLOAD_BYTES = 10 * 1024 * 1024
 export const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+/** Avatars also accept GIFs. They upload untouched so the animation survives. */
+export const ALLOWED_AVATAR_TYPES = [...ALLOWED_TYPES, 'image/gif']
 
 export interface CropArea {
   x: number
