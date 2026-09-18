@@ -141,7 +141,7 @@ export function FriendRow({
           <span className="text-[12px] leading-4 font-medium text-text-muted">{pausedText}</span>
         ) : progress !== undefined ? (
           <div className="flex items-center gap-2">
-            <ProgressBar value={progress} tone="dark" className="flex-1" />
+            <ProgressBar value={progress} variant="interior" className="flex-1" />
             <span className="shrink-0 text-[11px] leading-[14px] font-medium text-text-muted">
               {timestamp}
             </span>
