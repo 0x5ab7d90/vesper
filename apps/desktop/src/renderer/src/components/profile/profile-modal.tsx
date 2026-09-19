@@ -15,6 +15,7 @@ import { DitherCorner } from '@renderer/components/brand/dither-corner'
 import { NowPlaying, type NowPlayingData } from '@renderer/components/profile/now-playing'
 import { Showcase } from '@renderer/components/profile/showcase'
 import { Badges } from '@renderer/components/profile/badges'
+import { ListsEmptyArt } from '@renderer/components/profile/empty-art'
 import { StatsTab } from '@renderer/components/profile/stats-tab'
 import { BANNER_PALETTES } from '@renderer/lib/banner-palettes'
 import { closeProfile, useProfileModalUsername } from '@renderer/lib/profile-modal'
@@ -105,9 +106,13 @@ function ProfileBody({ username }: { username: string }): React.JSX.Element {
         <SquircleSurface variant="inset" className="min-h-0 flex-1 overflow-hidden">
           <div className="scroll-hide h-full overflow-y-auto p-3">
             {!profile ? null : tab === 'recents' ? (
-              <RecentsGrid username={username} />
+              <TabPanel>
+                <RecentsGrid username={username} />
+              </TabPanel>
             ) : tab === 'lists' ? (
-              <ListsGrid username={username} />
+              <TabPanel>
+                <ListsGrid username={username} />
+              </TabPanel>
             ) : (
               <StatsTab profile={profile} />
             )}
@@ -371,9 +376,29 @@ function FriendAction({
 
 const POSTER_GRID = 'grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-3'
 
-function EmptyNote({ children }: { children: React.ReactNode }): React.JSX.Element {
+/** The same framed card the Stats tab draws, so every tab's content sits in a panel with the
+ *  scroll area's padding around it. Grows to fill the tab so an empty state can centre. */
+function TabPanel({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <div className="flex h-full min-h-[200px] items-center justify-center">
+    <div
+      className="flex min-h-full flex-col border border-white/[0.06] bg-surface-2 p-5"
+      style={squircleStyle('frame')}
+    >
+      {children}
+    </div>
+  )
+}
+
+function EmptyNote({
+  children,
+  art
+}: {
+  children: React.ReactNode
+  art?: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      {art}
       <p className="text-[13px] leading-5 font-medium text-text-tertiary">{children}</p>
     </div>
   )
@@ -445,7 +470,9 @@ function ListsGrid({ username }: { username: string }): React.JSX.Element {
       </div>
     )
   }
-  if (lists.length === 0) return <EmptyNote>No public lists.</EmptyNote>
+  if (lists.length === 0) {
+    return <EmptyNote art={<ListsEmptyArt className="w-[168px]" />}>No public lists.</EmptyNote>
+  }
 
   return (
     <div className={LIST_GRID}>

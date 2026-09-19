@@ -12,6 +12,7 @@ import { TasteRadar } from '@renderer/components/profile/taste-radar'
 import { Skeleton } from '@renderer/components/ui/skeleton'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
 import { CameraSparkleIcon, CheckmarkIcon } from '@renderer/components/icons'
+import { StatsEmptyArt } from '@renderer/components/profile/empty-art'
 import { Ring } from '@renderer/components/ui/spinner'
 import { cn } from '@renderer/lib/cn'
 import { tmdbImage } from '@renderer/lib/tmdb'
@@ -66,10 +67,9 @@ export function StatsTab({ profile }: { profile: Doc<'profiles'> }): React.JSX.E
 
   if (data === undefined) return <StatsSkeleton />
   if (data === null) return <Note>Stats are private.</Note>
-  if (!data.stats) {
-    if (data.watchedCount === 0) return <Note>Nothing watched yet.</Note>
-    return <StatsSkeleton label="Crunching the numbers" />
-  }
+  // An empty watched list means an empty card, whatever an older snapshot still says.
+  if (data.watchedCount === 0) return <Note art>Nothing watched yet.</Note>
+  if (!data.stats) return <StatsSkeleton label="Crunching the numbers" />
 
   return <ShareCard profile={profile} stats={data.stats} />
 }
@@ -417,9 +417,15 @@ function Fact({
   )
 }
 
-function Note({ children }: { children: React.ReactNode }): React.JSX.Element {
+/** The card's frame with nothing in it but a line of text (and, for the empty state, the
+ *  mascot peeking over an empty chart), so the panel keeps its shape. */
+function Note({ children, art }: { children: React.ReactNode; art?: boolean }): React.JSX.Element {
   return (
-    <div className="flex h-full min-h-[200px] items-center justify-center">
+    <div
+      className="flex h-full min-h-[200px] flex-col items-center justify-center gap-4 border border-white/[0.06] bg-surface-2 p-5"
+      style={squircleStyle('frame')}
+    >
+      {art ? <StatsEmptyArt className="w-[168px]" /> : null}
       <p className="text-[13px] leading-5 font-medium text-text-tertiary">{children}</p>
     </div>
   )
@@ -577,14 +583,20 @@ function StatsSkeleton({ label }: { label?: string }): React.JSX.Element {
         </div>
         <div className="flex items-center justify-between border-t border-white/[0.06] pt-3">
           <Skeleton className="size-[22px] rounded-full" />
-          <Skeleton className="h-7 w-20 rounded-full" />
+          <Skeleton className="size-8 rounded-[12px]" />
         </div>
+        {label ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span
+              role="status"
+              className="inline-flex items-center gap-2 rounded-full bg-surface-3 px-3 py-1.5 text-[12px] leading-4 font-medium text-text-secondary shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+            >
+              <Ring className="size-3.5" />
+              {label}
+            </span>
+          </div>
+        ) : null}
       </div>
-      {label ? (
-        <p className="text-center text-[12px] leading-4 font-medium text-text-muted" role="status">
-          {label}
-        </p>
-      ) : null}
     </div>
   )
 }
