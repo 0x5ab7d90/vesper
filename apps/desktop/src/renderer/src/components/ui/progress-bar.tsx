@@ -98,7 +98,7 @@ function InteriorBar({
       )}
       {...props}
     >
-      <div className="relative h-[5px] overflow-hidden rounded-[2px]">
+      <div className="relative h-[7px] overflow-hidden rounded-[2px]">
         <motion.span
           aria-hidden
           className="absolute inset-0 block overflow-hidden rounded-[2px] bg-[#7a3fe4]"
