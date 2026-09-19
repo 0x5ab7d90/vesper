@@ -29,7 +29,7 @@ export function Select({
       <BaseSelect.Trigger
         aria-label={ariaLabel}
         className={cn(
-          'inline-flex h-8 min-w-[140px] shrink-0 items-center justify-between gap-2 rounded-full bg-white/[0.06] px-3.5 text-[13px] leading-4 font-medium text-text outline-none data-[popup-open]:bg-white/[0.10]',
+          'inline-flex h-8 min-w-[140px] shrink-0 items-center justify-between gap-2 rounded-md bg-white/[0.06] px-3.5 text-[13px] leading-4 font-medium text-text outline-none data-[popup-open]:bg-white/[0.10]',
           className
         )}
       >
