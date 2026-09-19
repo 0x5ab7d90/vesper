@@ -1,9 +1,9 @@
-import { v } from 'convex/values'
+import { v, type Infer } from 'convex/values'
 import { internal } from './_generated/api'
 import { parseProfileId } from './imdb'
 import { internalAction, internalMutation, internalQuery } from './_generated/server'
 import { presence } from './presence'
-import { showcaseItemValidator } from './schema'
+import { mediaTypeValidator, showcaseItemValidator } from './schema'
 
 // Dev-only helpers for eyeballing friend activity UI. Not reachable from clients; run with
 //   npx convex run devSeed:simulateWatching '{"username":"sicem","remainingTicks":30}'
@@ -14,10 +14,26 @@ const ROOM = 'vesper'
 const TICK_MS = 20_000
 const SESSION = 'dev-simulate-watching'
 
-// Interstellar: a fixed title so posters and progress look real without hitting TMDB.
-const TITLE = {
+// What the simulated session is playing. Interstellar by default, so posters and progress look
+// real without hitting TMDB; simulateWatchingTitle fills one of these from TMDB for any title.
+const mediaValidator = v.object({
+  imdbId: v.string(),
+  tmdbId: v.number(),
+  mediaType: mediaTypeValidator,
+  title: v.string(),
+  posterPath: v.optional(v.string()),
+  backdropPath: v.optional(v.string()),
+  durationSec: v.number(),
+  season: v.optional(v.number()),
+  episode: v.optional(v.number()),
+  episodeLabel: v.optional(v.string())
+})
+type Media = Infer<typeof mediaValidator>
+
+const TITLE: Media = {
   imdbId: 'tt0816692',
   tmdbId: 157336,
+  mediaType: 'movie',
   title: 'Interstellar',
   posterPath: '/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
   backdropPath: '/xJHokMbljvjADYdit5fK5VQsXEG.jpg',
@@ -29,11 +45,12 @@ export const simulateWatching = internalMutation({
     username: v.string(),
     remainingTicks: v.optional(v.number()),
     positionSec: v.optional(v.number()),
-    state: v.optional(v.union(v.literal('playing'), v.literal('paused')))
+    state: v.optional(v.union(v.literal('playing'), v.literal('paused'))),
+    media: v.optional(mediaValidator)
   },
   handler: async (
     ctx,
-    { username, remainingTicks = 30, positionSec = 3600, state = 'playing' }
+    { username, remainingTicks = 30, positionSec = 3600, state = 'playing', media = TITLE }
   ) => {
     const profile = await ctx.db
       .query('profiles')
@@ -49,27 +66,30 @@ export const simulateWatching = internalMutation({
       .withIndex('by_userId_and_imdb_season_ep', (q) =>
         q
           .eq('userId', userId)
-          .eq('imdbId', TITLE.imdbId)
-          .eq('season', undefined)
-          .eq('episode', undefined)
+          .eq('imdbId', media.imdbId)
+          .eq('season', media.season)
+          .eq('episode', media.episode)
       )
       .unique()
     const patch = {
       positionSec,
-      durationSec: TITLE.durationSec,
+      durationSec: media.durationSec,
       state,
-      title: TITLE.title,
-      tmdbId: TITLE.tmdbId,
-      posterPath: TITLE.posterPath,
-      backdropPath: TITLE.backdropPath,
+      title: media.title,
+      tmdbId: media.tmdbId,
+      posterPath: media.posterPath,
+      backdropPath: media.backdropPath,
+      episodeLabel: media.episodeLabel,
       updatedAt: Date.now()
     }
     if (existing) await ctx.db.patch(existing._id, patch)
     else {
       await ctx.db.insert('playbackProgress', {
         userId,
-        imdbId: TITLE.imdbId,
-        mediaType: 'movie',
+        imdbId: media.imdbId,
+        mediaType: media.mediaType,
+        season: media.season,
+        episode: media.episode,
         ...patch
       })
     }
@@ -79,10 +99,117 @@ export const simulateWatching = internalMutation({
         username,
         remainingTicks: remainingTicks - 1,
         positionSec: positionSec + (state === 'playing' ? TICK_MS / 1000 : 0),
-        state
+        state,
+        media
       })
     }
     return { userId, positionSec, remainingTicks }
+  }
+})
+
+// Simulate watching any title, looked up on TMDB. A movie by id, or a show with a season and
+// episode so the episode line shows too.
+//   npx convex run devSeed:simulateWatchingTitle '{"username":"sicem","mediaType":"tv","tmdbId":1396,"season":3,"episode":7,"positionSec":900}'
+//   npx convex run devSeed:simulateWatchingTitle '{"username":"sicem","mediaType":"movie","tmdbId":27205}'
+export const simulateWatchingTitle = internalAction({
+  args: {
+    username: v.string(),
+    mediaType: mediaTypeValidator,
+    tmdbId: v.number(),
+    season: v.optional(v.number()),
+    episode: v.optional(v.number()),
+    remainingTicks: v.optional(v.number()),
+    positionSec: v.optional(v.number()),
+    state: v.optional(v.union(v.literal('playing'), v.literal('paused')))
+  },
+  handler: async (
+    ctx,
+    { username, mediaType, tmdbId, season, episode, ...rest }
+  ): Promise<void> => {
+    const key = (process.env.TMDB_API_KEYS ?? process.env.TMDB_API_KEY ?? '').split(',')[0]?.trim()
+    if (!key) throw new Error('No TMDB key on this deployment')
+    const get = async <T>(path: string): Promise<T> => {
+      const url = new URL(`https://api.themoviedb.org/3${path}`)
+      url.searchParams.set('api_key', key)
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`TMDB ${res.status} for ${path}`)
+      return (await res.json()) as T
+    }
+    const details = await get<{
+      title?: string
+      name?: string
+      poster_path?: string | null
+      backdrop_path?: string | null
+      runtime?: number | null
+      episode_run_time?: number[]
+      external_ids?: { imdb_id?: string | null }
+    }>(`/${mediaType}/${tmdbId}?append_to_response=external_ids`)
+    // New titles often have no IMDb id on TMDB yet; the row only needs a stable key.
+    const imdbId = details.external_ids?.imdb_id ?? `tmdb:${mediaType}:${tmdbId}`
+
+    let durationSec = (details.runtime ?? details.episode_run_time?.[0] ?? 45) * 60
+    let episodeLabel: string | undefined
+    if (mediaType === 'tv' && season !== undefined && episode !== undefined) {
+      const ep = await get<{ name?: string; runtime?: number | null }>(
+        `/tv/${tmdbId}/season/${season}/episode/${episode}`
+      )
+      episodeLabel = ep.name ?? undefined
+      if (ep.runtime) durationSec = ep.runtime * 60
+    }
+
+    const media: Media = {
+      imdbId,
+      tmdbId,
+      mediaType,
+      title: details.title ?? details.name ?? String(tmdbId),
+      posterPath: details.poster_path ?? undefined,
+      backdropPath: details.backdrop_path ?? undefined,
+      durationSec,
+      season: mediaType === 'tv' ? season : undefined,
+      episode: mediaType === 'tv' ? episode : undefined,
+      episodeLabel
+    }
+    await ctx.runMutation(internal.devSeed.stopSimulating, { username })
+    await ctx.runMutation(internal.devSeed.simulateWatching, { username, media, ...rest })
+  }
+})
+
+// Cancel every pending simulateWatching tick for a user and mark their simulated rows idle, so
+// two loops never fight over what they are "watching". Runs before each new simulation.
+//   npx convex run devSeed:stopSimulating '{"username":"sicem"}'
+export const stopSimulating = internalMutation({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const pending = await ctx.db.system
+      .query('_scheduled_functions')
+      .filter((q) => q.eq(q.field('state.kind'), 'pending'))
+      .collect()
+    let cancelled = 0
+    for (const job of pending) {
+      const arg = job.args[0] as { username?: string } | undefined
+      if (job.name === 'devSeed.js:simulateWatching' && arg?.username === username) {
+        await ctx.scheduler.cancel(job._id)
+        cancelled += 1
+      }
+    }
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    let idled = 0
+    if (profile) {
+      const rows = await ctx.db
+        .query('playbackProgress')
+        .withIndex('by_userId_and_updatedAt', (q) => q.eq('userId', profile.userId))
+        .collect()
+      for (const row of rows) {
+        if (row.state && row.state !== 'idle') {
+          await ctx.db.patch(row._id, { state: 'idle' })
+          idled += 1
+        }
+      }
+    }
+    return { cancelled, idled }
   }
 })
 
@@ -493,5 +620,34 @@ export const grantBadge = internalMutation({
     const badges = [...current]
     await ctx.db.patch(profile._id, { badges })
     return { username, badges }
+  }
+})
+
+// Empty a dev user's Favorites (the liked list) and showcase, for looking at empty states.
+//   npx convex run devSeed:clearFavorites '{"username":"sicem"}'
+export const clearFavorites = internalMutation({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const liked = await ctx.db
+      .query('lists')
+      .withIndex('by_userId_and_kind', (q) => q.eq('userId', profile.userId).eq('kind', 'liked'))
+      .unique()
+    let items = 0
+    if (liked) {
+      const rows = await ctx.db
+        .query('listItems')
+        .withIndex('by_listId', (q) => q.eq('listId', liked._id))
+        .collect()
+      for (const row of rows) await ctx.db.delete(row._id)
+      items = rows.length
+      await ctx.db.patch(liked._id, { itemCount: 0, lastItemAddedAt: undefined })
+    }
+    await ctx.db.patch(profile._id, { showcase: undefined })
+    return { favorites: items }
   }
 })
