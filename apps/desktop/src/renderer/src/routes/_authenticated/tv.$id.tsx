@@ -234,7 +234,7 @@ function TvPage(): React.JSX.Element {
         focusEpisode={search.focusEpisode}
       />
 
-      {seasons.length > 0 ? <EpisodeRatings tmdbId={tvId} season={activeSeason} /> : null}
+      {seasons.length > 0 ? <EpisodeRatings tmdbId={tvId} /> : null}
 
       {cast.length > 0 ? (
         <ScrollSection title="Cast" gapClass="gap-4">
