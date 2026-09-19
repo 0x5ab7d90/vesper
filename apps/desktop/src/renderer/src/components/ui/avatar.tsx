@@ -2,27 +2,31 @@ import { useState } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@renderer/lib/cn'
 
-const avatarVariants = cva('block shrink-0 overflow-hidden bg-surface-3 object-cover', {
-  variants: {
-    size: {
-      xs: 'size-5',
-      sm: 'size-6',
-      md: 'size-8',
-      lg: 'size-14',
-      xl: 'size-16',
-      '2xl': 'size-20',
-      '3xl': 'size-[100px]'
+// The inset outline gives a pale or mostly-white avatar an edge against the surface.
+const avatarVariants = cva(
+  'block shrink-0 overflow-hidden bg-surface-3 object-cover outline-1 -outline-offset-1 outline-white/10',
+  {
+    variants: {
+      size: {
+        xs: 'size-5',
+        sm: 'size-6',
+        md: 'size-8',
+        lg: 'size-14',
+        xl: 'size-16',
+        '2xl': 'size-20',
+        '3xl': 'size-[100px]'
+      },
+      shape: {
+        circle: 'rounded-full',
+        square: 'rounded-md'
+      }
     },
-    shape: {
-      circle: 'rounded-full',
-      square: 'rounded-md'
+    defaultVariants: {
+      size: 'md',
+      shape: 'circle'
     }
-  },
-  defaultVariants: {
-    size: 'md',
-    shape: 'circle'
   }
-})
+)
 
 type AvatarProps = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt'> &
   VariantProps<typeof avatarVariants> & {

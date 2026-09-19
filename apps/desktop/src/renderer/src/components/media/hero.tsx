@@ -112,7 +112,9 @@ export function Hero({
                 className="mb-1 max-h-[110px] w-auto max-w-[380px]"
               />
             ) : (
-              <h1 className="text-5xl leading-tight font-bold text-text">{title}</h1>
+              <h1 className="text-5xl leading-tight font-bold tracking-[-0.02em] text-balance text-text">
+                {title}
+              </h1>
             )}
             <div className="flex items-center gap-2">
               <span className="text-[13px] leading-4 font-medium text-text-secondary">
@@ -129,7 +131,7 @@ export function Hero({
             >
               {description}
             </button>
-            <div className="flex flex-wrap items-center gap-3 text-[13px] leading-4 font-medium text-text">
+            <div className="flex flex-wrap items-center gap-3 text-[13px] leading-4 font-medium text-text tabular-nums">
               <span>{year}</span>
               <span>{unreleased ? releaseLabel : runtime}</span>
               {metacritic !== undefined ? (

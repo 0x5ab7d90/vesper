@@ -23,6 +23,8 @@ import { tmdbImage } from '@renderer/lib/tmdb'
 import { api } from '@convex/_generated/api'
 import type { Doc, Id } from '@convex/_generated/dataModel'
 import type { FunctionReturnType } from 'convex/server'
+import { cn } from '@renderer/lib/cn'
+import { POPUP_MOTION } from '@renderer/components/ui/popup-motion'
 
 const POP = { type: 'spring', stiffness: 400, damping: 26 } as const
 
@@ -76,7 +78,7 @@ function ProfileBody({ username }: { username: string }): React.JSX.Element {
       initial={{ opacity: 0, scale: 0.96, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={POP}
-      className="relative flex h-[min(1052px,94vh)] gap-1.5 border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
+      className="relative flex h-[min(1052px,94vh)] gap-1.5 bg-surface-2 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_24px_64px_rgba(0,0,0,0.5)]"
       style={squircleStyle('frame')}
     >
       {/* Start the field past the 320px identity card and the tab switcher beside it. */}
@@ -98,7 +100,7 @@ function ProfileBody({ username }: { username: string }): React.JSX.Element {
             type="button"
             onClick={closeProfile}
             aria-label="Close"
-            className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white active:opacity-70"
+            className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none hover:bg-white/[0.08] hover:text-white active:opacity-70"
           >
             <CloseIcon className="size-3" />
           </button>
@@ -347,7 +349,10 @@ function FriendAction({
         <Menu.Portal>
           <Menu.Positioner side="top" align="end" sideOffset={6} className="z-[60]">
             <Menu.Popup
-              className="flex w-[180px] flex-col border border-white/[0.06] bg-surface-2 p-1 outline-none"
+              className={cn(
+                'flex w-[180px] flex-col bg-surface-2 p-1 shadow-edge outline-none',
+                POPUP_MOTION
+              )}
               style={squircleStyle('frame-sm')}
             >
               {state.state === 'accepted' ? (
@@ -381,7 +386,7 @@ const POSTER_GRID = 'grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-3'
 function TabPanel({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <div
-      className="flex min-h-full flex-col border border-white/[0.06] bg-surface-2 p-5"
+      className="flex min-h-full flex-col bg-surface-2 p-5 shadow-edge"
       style={squircleStyle('frame')}
     >
       {children}

@@ -30,6 +30,17 @@
 
 /* ----- design tokens (oa-design grammar on Vesper's dark palette, ADR-0013) ----- */
 @theme {
+  /* Motion: one ease-out for anything the user triggers; in-out only for things that travel
+     between places. Every bare `transition-*` utility picks the ease-out up by default. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --default-transition-timing-function: var(--ease-out);
+
+  /* Surface edges come from light, not lines: a one-pixel inset ring replaces the 1px border
+     so containers read as raised rather than drawn on. Borders stay for inputs and dividers. */
+  --shadow-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-edge-soft: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+
   --font-sans:
     'Inter Variable', -apple-system, BlinkMacSystemFont, 'SF Pro', 'SF Pro Text',
     'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
@@ -104,6 +115,13 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/* The document canvas itself carries the theme colour, so nothing pale can show through at an
+   edge, and the window never rubber-bands past the app. */
+html {
+  background: var(--color-bg);
+  overscroll-behavior: none;
 }
 
 body {
@@ -236,7 +254,7 @@ svg {
   --icon-swap-dur: 250ms;
   --icon-swap-blur: 2px;
   --icon-swap-start-scale: 0.25;
-  --icon-swap-ease: ease-in-out;
+  --icon-swap-ease: var(--ease-out);
 }
 
 /* Export button: the check draws itself as the camera crossfades out. The dash length is the
@@ -362,7 +380,7 @@ svg {
 
 /* Episode focus pulse — share-link landing highlight */
 .episode-focus-pulse {
-  animation: episode-focus-pulse 2500ms linear forwards;
+  animation: episode-focus-pulse 2500ms var(--ease-out) forwards;
 }
 @keyframes episode-focus-pulse {
   0% {
@@ -384,6 +402,32 @@ svg {
   }
 }
 
+/* Skeletons hold their space from the first frame but stay invisible for 120ms, so a load
+   that finishes in a blink never flashes a placeholder. */
+@keyframes skeleton-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+.skeleton {
+  animation:
+    skeleton-appear 200ms var(--ease-out) 120ms both,
+    skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) 320ms infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: skeleton-appear 0ms linear 120ms both;
+  }
+}
+
 @keyframes rating-star-in {
   from {
     opacity: 0;
@@ -396,7 +440,7 @@ svg {
 }
 .rating-star-in {
   opacity: 0;
-  animation: rating-star-in 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: rating-star-in 220ms var(--ease-out) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .rating-star-in {

@@ -24,7 +24,7 @@ export function PipPlaceholder({ visible, onExit, onMinimize }: Props): React.JS
       aria-hidden={!visible}
     >
       <PipGlyph />
-      <p className="text-[15px] leading-5 font-semibold tracking-[-0.01em] text-white/70">
+      <p className="text-[15px] leading-5 font-semibold text-white/70">
         Playing in picture-in-picture
       </p>
       <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export function PipPlaceholder({ visible, onExit, onMinimize }: Props): React.JS
           type="button"
           onClick={onExit}
           tabIndex={visible ? 0 : -1}
-          className="rounded-lg bg-white/10 px-4 py-2 text-[13px] leading-4 font-semibold tracking-[-0.01em] text-white outline-none hover:bg-white/20"
+          className="rounded-lg bg-white/10 px-4 py-2 text-[13px] leading-4 font-semibold text-white outline-none hover:bg-white/20"
         >
           Play here instead
         </button>
@@ -40,7 +40,7 @@ export function PipPlaceholder({ visible, onExit, onMinimize }: Props): React.JS
           type="button"
           onClick={onMinimize}
           tabIndex={visible ? 0 : -1}
-          className="rounded-lg bg-white/10 px-4 py-2 text-[13px] leading-4 font-semibold tracking-[-0.01em] text-white outline-none hover:bg-white/20"
+          className="rounded-lg bg-white/10 px-4 py-2 text-[13px] leading-4 font-semibold text-white outline-none hover:bg-white/20"
         >
           Minimize Vesper
         </button>

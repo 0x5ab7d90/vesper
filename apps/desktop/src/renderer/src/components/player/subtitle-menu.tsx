@@ -34,6 +34,7 @@ import { langLabel } from '@renderer/lib/lang'
 import { FlagTile } from './flag-tile'
 import type { EmbeddedTrack } from '@renderer/lib/use-subtitle-tracks'
 import type { SelectedSub } from './subtitle-overlay'
+import { EASE_IN, EASE_OUT } from '@renderer/lib/motion'
 
 type Tab = 'embedded' | 'online' | 'local' | 'style' | 'sync'
 
@@ -658,7 +659,7 @@ function SyncTab({
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="flex flex-col items-center pt-6 pb-1">
-        <span className="text-[34px] leading-[40px] font-bold tabular-nums text-white">
+        <span className="text-[34px] leading-[40px] font-bold tracking-[-0.02em] tabular-nums text-white">
           {formatOffset(offsetSec)}
         </span>
         <span className="mt-1 text-[11px] leading-[14px] font-medium tracking-[0.08em] text-white/45 uppercase">
@@ -775,10 +776,10 @@ function ColorChips({
                   strokeLinejoin="round"
                   className="size-3.5"
                   style={{ mixBlendMode: 'difference' }}
-                  initial={{ opacity: 0, scale: 0.85 }}
+                  initial={{ opacity: 0, scale: 0.94 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.85 }}
-                  transition={{ duration: 0.14, ease: [0.23, 1, 0.32, 1] }}
+                  exit={{ opacity: 0, transition: { duration: 0.07, ease: EASE_IN } }}
+                  transition={{ duration: 0.14, ease: EASE_OUT }}
                 >
                   <path d="M5 13l4 4L19 7" />
                 </motion.svg>

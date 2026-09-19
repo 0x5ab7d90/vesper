@@ -1,4 +1,5 @@
 import { cn } from '@renderer/lib/cn'
+import { IMG_OUTLINE } from '@renderer/components/ui/image-outline'
 
 export interface FightEventCardProps {
   title: string
@@ -82,7 +83,7 @@ export function FightEventCard({
           alt=""
           decoding="async"
           loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover"
+          className={cn('absolute inset-0 h-full w-full object-cover', IMG_OUTLINE)}
           onError={(e) => {
             e.currentTarget.style.display = 'none'
           }}

@@ -232,7 +232,7 @@ export type TooltipGroupProps = {
 
 export function TooltipGroup({
   children,
-  openDelay = 200,
+  openDelay = 400,
   closeDelay = 120,
   skipDelay = 400,
   onWarmChange,
@@ -301,7 +301,7 @@ function isKeyboardFocus(el: HTMLElement): boolean {
 
 function useTooltip({
   disabled = false,
-  openDelay = 200,
+  openDelay = 400,
   closeDelay = 120,
   skipDelay = 400
 }: UseTooltipOptions = {}): UseTooltipReturn {

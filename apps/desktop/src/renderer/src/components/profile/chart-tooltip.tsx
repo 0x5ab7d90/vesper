@@ -57,7 +57,7 @@ export function ChartTooltip({
           }}
           exit={{ opacity: 0, transition: { duration: 0.1 } }}
           transition={GLIDE}
-          className="pointer-events-none absolute z-10 flex min-w-[88px] flex-col gap-0.5 rounded-lg border border-white/[0.08] bg-surface-3 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          className="pointer-events-none absolute z-10 flex min-w-[88px] flex-col gap-0.5 rounded-lg bg-surface-3 px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_8px_24px_rgba(0,0,0,0.45)]"
         >
           {heading ? (
             <span className="text-[11px] leading-4 font-medium text-text-tertiary">{heading}</span>

@@ -66,7 +66,7 @@ function KnownForCard({
         <span className="line-clamp-1 text-[13px] leading-4 font-semibold text-text">
           {item.title}
         </span>
-        <span className="line-clamp-1 text-[12px] leading-4 font-medium text-text-tertiary">
+        <span className="line-clamp-1 text-[12px] leading-4 font-medium text-text-tertiary tabular-nums">
           {[item.character, item.year].filter(Boolean).join(', ')}
         </span>
       </div>

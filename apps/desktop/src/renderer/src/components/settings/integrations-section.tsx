@@ -7,6 +7,8 @@ import { api } from '@convex/_generated/api'
 import traktLogo from '@renderer/assets/brand/trakt.webp'
 import { Row } from '@renderer/components/settings/integration-row'
 import { ImdbIntegration } from '@renderer/components/settings/imdb-integration'
+import { cn } from '@renderer/lib/cn'
+import { IMG_OUTLINE } from '@renderer/components/ui/image-outline'
 
 export function IntegrationsSection(): React.JSX.Element {
   const [discordRpc, setDiscordRpc] = useState(() => readDiscordRpcEnabled())
@@ -45,7 +47,11 @@ function TraktIntegration(): React.JSX.Element {
   }
 
   const traktIcon = (
-    <img src={traktLogo} alt="" className="size-[26px] rounded-[7px] object-cover" />
+    <img
+      src={traktLogo}
+      alt=""
+      className={cn('size-[26px] rounded-[7px] object-cover', IMG_OUTLINE)}
+    />
   )
 
   if (!connection) {

@@ -7,7 +7,7 @@ export function Skeleton({ className, ref, ...props }: SkeletonProps): React.JSX
     <div
       ref={ref}
       aria-hidden
-      className={cn('animate-pulse rounded-md bg-surface-2', className)}
+      className={cn('skeleton rounded-md bg-surface-2', className)}
       {...props}
     />
   )

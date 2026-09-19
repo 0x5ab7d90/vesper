@@ -44,7 +44,7 @@ export function LibraryListItem({
         data-active={active || undefined}
         aria-label={name}
         className={cn(
-          'flex size-12 items-center justify-center rounded-md transition-colors',
+          'flex size-12 items-center justify-center rounded-md',
           active ? 'bg-white/[0.06]' : 'bg-transparent hover:bg-white/[0.04]'
         )}
       >
@@ -57,7 +57,8 @@ export function LibraryListItem({
     <div
       data-active={active || undefined}
       className={cn(
-        'flex w-full items-center gap-3 rounded-md p-2 text-left transition-colors',
+        // 18px outer = the cover's 10px + the 8px padding, so the two corners stay concentric.
+        'flex w-full items-center gap-3 rounded-xl p-2 text-left',
         // Only reorderable lists (unpinned custom) show the grab cursor; pinned + default are fixed.
         kind === 'custom' && !pinned && 'cursor-grab',
         active ? 'bg-white/[0.06]' : 'bg-transparent hover:bg-white/[0.04]'
@@ -71,7 +72,7 @@ export function LibraryListItem({
             <PinSolidIcon className="size-3 shrink-0 text-text-tertiary" aria-hidden />
           ) : null}
         </span>
-        <span className="truncate text-[12px] leading-4 font-medium text-text-tertiary">
+        <span className="truncate text-[12px] leading-4 font-medium text-text-tertiary tabular-nums">
           {count} titles
         </span>
       </div>

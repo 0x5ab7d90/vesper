@@ -11,6 +11,7 @@ import { cn } from '@renderer/lib/cn'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
+import { POPUP_MOTION } from '@renderer/components/ui/popup-motion'
 
 interface AddToListsPopoverProps {
   mediaType: 'movie' | 'tv'
@@ -34,7 +35,10 @@ export function AddToListsPopover({
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="start" sideOffset={8} className="z-[100]">
           <Popover.Popup
-            className="z-50 w-[300px] overflow-hidden border border-white/[0.06] bg-surface-2 outline-none"
+            className={cn(
+              'z-50 w-[300px] overflow-hidden bg-surface-2 shadow-edge outline-none',
+              POPUP_MOTION
+            )}
             style={squircleStyle('frame-sm')}
           >
             {open ? (
@@ -216,7 +220,7 @@ function PopoverBody({
                   type="button"
                   key={list._id}
                   onClick={() => toggle(list._id as Id<'lists'>)}
-                  className="flex items-center gap-2.5 rounded-md bg-transparent px-1.5 py-1 text-left outline-none transition-colors hover:bg-white/[0.04]"
+                  className="flex items-center gap-2.5 rounded-md bg-transparent px-1.5 py-1 text-left outline-none hover:bg-white/[0.04]"
                 >
                   <ListCover
                     kind={list.kind}

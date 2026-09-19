@@ -10,18 +10,18 @@ export function SimpleTooltip({
   content,
   children,
   side = 'top',
-  delay = 300,
   className
 }: {
   content: React.ReactNode
   /** The trigger. Rendered as-is; hover and focus handlers are attached to it. */
   children: React.ReactElement
   side?: 'top' | 'bottom' | 'left' | 'right'
-  delay?: number
   className?: string
 }): React.JSX.Element {
+  // Delay and grouping come from the app-wide Tooltip.Provider in main.tsx: the first tooltip
+  // waits, then its neighbours open at once.
   return (
-    <Tooltip.Provider delay={delay}>
+    <>
       <Tooltip.Root>
         <Tooltip.Trigger render={children} />
         <Tooltip.Portal>
@@ -29,7 +29,7 @@ export function SimpleTooltip({
             <Tooltip.Popup
               className={cn(
                 'max-w-[240px] rounded-md bg-surface-3 px-2.5 py-1.5 text-[12px] leading-4 font-medium text-text shadow-[0_4px_16px_rgba(0,0,0,0.3)] outline-none',
-                'origin-[var(--transform-origin)] transition-[opacity,transform] duration-150 ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
+                'origin-(--transform-origin) transition-[opacity,scale] duration-150 ease-(--ease-out) data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[ending-style]:duration-75',
                 className
               )}
             >
@@ -38,6 +38,6 @@ export function SimpleTooltip({
           </Tooltip.Positioner>
         </Tooltip.Portal>
       </Tooltip.Root>
-    </Tooltip.Provider>
+    </>
   )
 }

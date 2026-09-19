@@ -45,7 +45,9 @@ function SignInPage(): React.JSX.Element {
   return (
     <AuthSplitLayout>
       <header className="flex flex-col gap-1">
-        <h1 className="text-[28px] leading-tight font-bold text-text">Welcome back</h1>
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.02em] text-balance text-text">
+          Welcome back
+        </h1>
         <p className="text-[14px] leading-5 font-medium text-text-secondary">
           Sign in to keep watching where you left off.
         </p>

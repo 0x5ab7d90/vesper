@@ -23,6 +23,7 @@ import {
   usernameSchema
 } from '@renderer/lib/settings-schemas'
 import { api } from '@convex/_generated/api'
+import { EXIT_FADE } from '@renderer/lib/motion'
 
 interface ProfileShape {
   displayName: string
@@ -94,7 +95,7 @@ function HoverScrim({
           <motion.span
             initial={{ scale: 0.94, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.94, opacity: 0 }}
+            exit={EXIT_FADE}
             transition={{ type: 'spring', visualDuration: 0.18, bounce: 0.1 }}
             className="inline-flex items-center gap-2"
           >
@@ -505,7 +506,7 @@ function BioField({ initial }: { initial: string }): React.JSX.Element {
         <span className="text-[13px] font-medium text-text-tertiary">Bio</span>
         <div className="flex items-center gap-2">
           <StatusDot state={state} />
-          <span className="text-[11px] font-medium text-text-muted">
+          <span className="text-[11px] font-medium text-text-muted tabular-nums">
             {value.length}/{BIO_MAX}
           </span>
         </div>

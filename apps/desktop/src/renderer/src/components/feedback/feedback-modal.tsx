@@ -15,6 +15,7 @@ import { cn } from '@renderer/lib/cn'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
 import { useErrorShake } from '@renderer/hooks/use-error-shake'
 import { api } from '@convex/_generated/api'
+import { EASE_OUT, EXIT_FADE } from '@renderer/lib/motion'
 
 const MIN_MSG = 5
 const MAX_MSG = 4000
@@ -153,7 +154,7 @@ export function FeedbackModal({
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={POP}
-            className="relative flex h-[380px] flex-col border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
+            className="relative flex h-[380px] flex-col bg-surface-2 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_24px_64px_rgba(0,0,0,0.5)]"
             style={squircleStyle('frame')}
           >
             <DitherCorner />
@@ -164,13 +165,13 @@ export function FeedbackModal({
                     type="button"
                     onClick={() => onOpenChange(false)}
                     aria-label="Close"
-                    className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white active:opacity-70"
+                    className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none hover:bg-white/[0.08] hover:text-white active:opacity-70"
                   >
                     <CloseIcon className="size-3" />
                   </button>
                 </div>
                 <div
-                  className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 border border-white/[0.05] bg-surface px-8 text-center"
+                  className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-surface px-8 text-center shadow-edge-soft"
                   style={squircleStyle('inset')}
                 >
                   <HeartDrop size={96} className="mb-1" />
@@ -198,7 +199,7 @@ export function FeedbackModal({
                     type="button"
                     onClick={() => onOpenChange(false)}
                     aria-label="Close"
-                    className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white active:opacity-70"
+                    className="flex size-7 items-center justify-center rounded-full text-text-tertiary outline-none hover:bg-white/[0.08] hover:text-white active:opacity-70"
                   >
                     <CloseIcon className="size-3" />
                   </button>
@@ -224,8 +225,8 @@ export function FeedbackModal({
                         key="error"
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                        exit={EXIT_FADE}
+                        transition={{ duration: 0.16, ease: EASE_OUT }}
                         className="px-4 pb-3"
                       >
                         <p className="line-clamp-2 text-[12px] leading-4 font-medium text-[#f08c8c]">
@@ -238,7 +239,7 @@ export function FeedbackModal({
                 <div className="flex shrink-0 items-center justify-between gap-3 px-2.5 pt-2 pb-1">
                   <span
                     className={cn(
-                      'text-[11px] leading-4 font-medium',
+                      'text-[11px] leading-4 font-medium tabular-nums',
                       fieldError && isSubmitted ? 'text-red-400' : 'text-text-muted'
                     )}
                   >

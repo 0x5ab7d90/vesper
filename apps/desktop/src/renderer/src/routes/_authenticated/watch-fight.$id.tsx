@@ -365,7 +365,14 @@ function WatchFightPage(): React.JSX.Element {
               aria-label={paused ? 'Play' : 'Pause'}
               className="flex size-12 items-center justify-center text-white outline-none"
             >
-              {paused ? <BigPlayIcon /> : <BigPauseIcon />}
+              <span className="t-icon-swap" data-state={paused ? 'a' : 'b'}>
+                <span className="t-icon inline-flex" data-icon="a" aria-hidden={!paused}>
+                  <BigPlayIcon />
+                </span>
+                <span className="t-icon inline-flex" data-icon="b" aria-hidden={paused}>
+                  <BigPauseIcon />
+                </span>
+              </span>
             </button>
             <button
               type="button"

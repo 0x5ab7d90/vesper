@@ -1,6 +1,7 @@
 import { ProgressBar } from '@renderer/components/ui/progress-bar'
 import { Tooltip } from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/cn'
+import { IMG_OUTLINE } from '@renderer/components/ui/image-outline'
 
 export type FriendStatus = 'watching' | 'paused' | 'idle' | 'offline'
 
@@ -71,7 +72,12 @@ function Avatar({
   const dotOffset = dotSize && dotSize.size <= 10 ? -2 : 0
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
-      <img src={src} alt="" aria-hidden className="h-full w-full rounded-full object-cover" />
+      <img
+        src={src}
+        alt=""
+        aria-hidden
+        className={cn('h-full w-full rounded-full object-cover', IMG_OUTLINE)}
+      />
       {dotSize ? (
         <StatusDot
           status={dotSize.status}
@@ -103,13 +109,14 @@ export function FriendRow({
     <RowEl
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={cn(
-        'flex w-full gap-[10px] rounded-md bg-transparent p-2 text-left outline-none transition-colors',
+        // 22px outer = the poster's 14px + the 8px padding, so the corners stay concentric.
+        'flex w-full gap-[10px] rounded-2xl bg-transparent p-2 text-left outline-none',
         onClick && 'hover:bg-white/[0.04]'
       )}
     >
       {hasPoster ? (
         <div
-          className="size-14 shrink-0 rounded-[14px] bg-cover bg-center"
+          className={cn('size-14 shrink-0 rounded-[14px] bg-cover bg-center', IMG_OUTLINE)}
           style={{ backgroundImage: `url(${poster})` }}
           aria-label={show}
         />
@@ -142,12 +149,12 @@ export function FriendRow({
         ) : progress !== undefined ? (
           <div className="flex items-center gap-2">
             <ProgressBar value={progress} variant="interior" className="flex-1" />
-            <span className="shrink-0 text-[11px] leading-[14px] font-medium text-text-muted">
+            <span className="shrink-0 text-[11px] leading-[14px] font-medium text-text-muted tabular-nums">
               {timestamp}
             </span>
           </div>
         ) : (
-          <span className="text-[11px] leading-[14px] font-medium text-text-muted">
+          <span className="text-[11px] leading-[14px] font-medium text-text-muted tabular-nums">
             {timestamp}
           </span>
         )}

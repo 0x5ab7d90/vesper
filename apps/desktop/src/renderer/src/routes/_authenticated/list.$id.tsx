@@ -193,7 +193,9 @@ function ListHeader({
         coverUrl={list.coverUrl}
       />
       <div className="flex min-w-0 flex-1 flex-col justify-end gap-2 pb-1">
-        <h1 className="text-[28px] leading-8 font-semibold text-text">{list.name}</h1>
+        <h1 className="text-[28px] leading-8 font-semibold tracking-[-0.02em] text-balance text-text">
+          {list.name}
+        </h1>
         {list.description ? (
           <p className="text-[14px] leading-5 text-text-secondary">{list.description}</p>
         ) : null}

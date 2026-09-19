@@ -4,6 +4,8 @@ import { PlayIcon } from '@renderer/components/icons'
 import { ProgressBar } from '@renderer/components/ui/progress-bar'
 import { tmdbImage, type TmdbEpisode } from '@renderer/lib/tmdb'
 import { cn } from '@renderer/lib/cn'
+import { IMAGE_EDGE } from '@renderer/components/ui/image-outline'
+import { POPUP_MOTION } from '@renderer/components/ui/popup-motion'
 
 interface EpisodeCardProps {
   episode: TmdbEpisode
@@ -53,7 +55,10 @@ export function EpisodeCard({
         type="button"
         onClick={onPlay}
         aria-label={`${episode.name}, S${episode.season_number} E${episode.episode_number}`}
-        className="relative flex h-[140px] w-[220px] shrink-0 flex-col overflow-hidden rounded-xl bg-surface-2 bg-cover bg-center p-3 text-left outline-none"
+        className={cn(
+          'relative flex h-[140px] w-[220px] shrink-0 flex-col overflow-hidden rounded-xl bg-surface-2 bg-cover bg-center p-3 text-left outline-none',
+          IMAGE_EDGE
+        )}
         style={still ? { backgroundImage: `url(${still})` } : undefined}
       >
         <div
@@ -65,7 +70,7 @@ export function EpisodeCard({
         />
         <div className="relative flex-1" />
         <div className="relative flex flex-col gap-1.5">
-          <span className="line-clamp-1 max-w-[200px] text-[14px] leading-tight font-semibold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">
+          <span className="line-clamp-1 max-w-[200px] text-[14px] leading-tight font-semibold text-white tabular-nums drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]">
             S{episode.season_number}E{episode.episode_number}, {episode.name}
           </span>
           <div className="flex items-center gap-2">
@@ -76,7 +81,7 @@ export function EpisodeCard({
               <div className="flex-1" />
             )}
             {duration ? (
-              <span className="shrink-0 text-[12px] leading-4 font-medium text-white">
+              <span className="shrink-0 text-[12px] leading-4 font-medium text-white tabular-nums">
                 {duration}
               </span>
             ) : null}
@@ -88,7 +93,7 @@ export function EpisodeCard({
         <Menu.Trigger
           aria-label="Episode options"
           className={cn(
-            'absolute top-2 right-2 flex size-6 items-center justify-center rounded-md bg-black/40 text-white/80 outline-none transition-opacity hover:bg-black/60 hover:text-white',
+            'absolute top-2 right-2 flex size-6 items-center justify-center rounded-md bg-black/40 text-white/80 outline-none hover:bg-black/60 hover:text-white',
             menuOpen ? 'opacity-100' : 'opacity-0 group-hover/episode:opacity-100'
           )}
         >
@@ -96,7 +101,12 @@ export function EpisodeCard({
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-[100]">
-            <Menu.Popup className="flex w-[180px] flex-col rounded-lg bg-surface-2 p-1 shadow-[0_4px_16px_rgba(0,0,0,0.3)] outline-none">
+            <Menu.Popup
+              className={cn(
+                'flex w-[180px] flex-col rounded-lg bg-surface-2 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_4px_16px_rgba(0,0,0,0.3)] outline-none',
+                POPUP_MOTION
+              )}
+            >
               {watched ? (
                 <Menu.Item
                   onClick={onMarkUnwatched}

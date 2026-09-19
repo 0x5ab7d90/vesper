@@ -59,6 +59,7 @@ import { resolveStreamUrl, type StreamContext } from '@renderer/lib/resolve-stre
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
 import { useWebStreams, webQualityLabel, type WebStream } from '@renderer/lib/web-sources'
 import { FlagTile } from './flag-tile'
+import { EASE_OUT, EXIT_FADE } from '@renderer/lib/motion'
 
 const POP = { type: 'spring', stiffness: 400, damping: 26 } as const
 
@@ -93,7 +94,7 @@ export function StreamPicker(props: StreamPickerProps): React.JSX.Element {
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={POP}
-            className="relative flex h-[560px] flex-col border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
+            className="relative flex h-[560px] flex-col bg-surface-2 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_24px_64px_rgba(0,0,0,0.5)]"
             style={squircleStyle('frame')}
           >
             <DitherCorner />
@@ -212,16 +213,14 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
     <div className="relative flex h-full min-h-0 flex-col">
       <div className="shrink-0 pt-1.5 pb-1.5">
         <div className="flex items-center justify-between pl-2.5 pr-1">
-          <h2 className="min-w-0 truncate text-[15px] leading-4 font-medium tracking-[-0.01em] text-text">
-            {title}
-          </h2>
-          <Dialog.Close className="flex size-7 items-center justify-center rounded-full text-text-muted outline-none transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white">
+          <h2 className="min-w-0 truncate text-[15px] leading-4 font-medium text-text">{title}</h2>
+          <Dialog.Close className="flex size-7 items-center justify-center rounded-full text-text-muted outline-none hover:bg-white/[0.08] hover:text-white">
             <CloseIcon className="size-3.5" />
           </Dialog.Close>
         </div>
       </div>
       <div
-        className="flex min-h-0 flex-1 flex-col border border-white/[0.05] bg-surface"
+        className="flex min-h-0 flex-1 flex-col bg-surface shadow-edge-soft"
         style={squircleStyle('inset')}
       >
         {/* The sort tabs live inside the inset: its solid surface keeps them legible under
@@ -300,10 +299,7 @@ function SkeletonRow(): React.JSX.Element {
   )
 }
 
-const ROW_ANIM = {
-  duration: 0.18,
-  ease: [0.23, 1, 0.32, 1] as [number, number, number, number]
-}
+const ROW_ANIM = { duration: 0.18, ease: EASE_OUT }
 
 const ROW_CLASS =
   'flex items-center justify-between gap-2.5 rounded-[10px] py-2.5 pr-3 pl-2.5 text-left outline-none transition-colors'
@@ -329,7 +325,7 @@ function Row({
       layout={reduced ? false : true}
       initial={reduced ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={EXIT_FADE}
       transition={ROW_ANIM}
       onClick={onClick}
       disabled={busy}
@@ -372,7 +368,7 @@ function WebRow({
       layout={reduced ? false : true}
       initial={reduced ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={EXIT_FADE}
       transition={ROW_ANIM}
       onClick={onClick}
       className={cn(ROW_CLASS, 'bg-transparent hover:bg-white/[0.04]')}

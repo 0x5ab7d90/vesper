@@ -13,6 +13,7 @@ import { router, queryClient } from './router'
 import { queryPersister } from './lib/query-persister'
 import { Heartbeat } from './lib/presence'
 import { TooltipGroup } from './components/ui/tooltip'
+import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { mountOpenUrlHandler, flushPendingDeepLink } from './lib/open-url-mount'
 import { convexClient as convex } from './lib/convex-client'
 
@@ -70,7 +71,10 @@ function App(): React.JSX.Element | null {
     <LazyMotion features={domAnimation}>
       {auth.isAuthenticated ? <Heartbeat /> : null}
       <TooltipGroup openDelay={400}>
-        <RouterProvider router={router} context={{ queryClient, auth }} />
+        {/* Base UI tooltips share one group too: first waits, neighbours open at once. */}
+        <BaseTooltip.Provider delay={500} closeDelay={0}>
+          <RouterProvider router={router} context={{ queryClient, auth }} />
+        </BaseTooltip.Provider>
       </TooltipGroup>
     </LazyMotion>
   )

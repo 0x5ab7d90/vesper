@@ -19,6 +19,8 @@ import {
   type ExploreSort
 } from '@renderer/lib/tmdb-queries'
 import { tmdbImage, type TmdbMovie, type TmdbShow } from '@renderer/lib/tmdb'
+import { cn } from '@renderer/lib/cn'
+import { IMG_OUTLINE } from '@renderer/components/ui/image-outline'
 
 type ExploreType = 'movie' | 'tv'
 
@@ -285,7 +287,7 @@ const ExploreCard = memo(function ExploreCard({
         loading="lazy"
         decoding="async"
         draggable={false}
-        className="absolute inset-0 size-full object-cover"
+        className={cn('absolute inset-0 size-full rounded-[inherit] object-cover', IMG_OUTLINE)}
       />
     </BaseButton>
   )

@@ -30,7 +30,9 @@ export function PersonHero({ name, born, profile, backdrops }: PersonHeroProps):
           className="size-[180px] rounded-full"
         />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pb-1">
-          <h1 className="text-[34px] leading-[1.1] font-bold text-text">{name}</h1>
+          <h1 className="text-[34px] leading-[1.1] font-bold tracking-[-0.02em] text-balance text-text">
+            {name}
+          </h1>
           {born ? (
             <span className="text-[13px] leading-4 font-medium text-text-secondary">{born}</span>
           ) : null}

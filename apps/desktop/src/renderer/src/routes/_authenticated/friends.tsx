@@ -12,6 +12,7 @@ import {
   TrashGlyph
 } from '@renderer/components/ui/context-menu'
 import { MenuDotsIcon } from '@renderer/components/icons'
+import { m as motion, useReducedMotion } from 'motion/react'
 import { cn } from '@renderer/lib/cn'
 import { openProfile } from '@renderer/lib/profile-modal'
 import { api } from '@convex/_generated/api'
@@ -78,15 +79,22 @@ function TabButton({
   badge?: number
   children: React.ReactNode
 }): React.JSX.Element {
+  const reduced = useReducedMotion()
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        '-mb-px flex items-center gap-1.5 pt-2 pb-2.5 outline-none',
-        active ? 'border-b-2 border-white' : 'border-b-2 border-transparent'
-      )}
+      className="relative -mb-px flex items-center gap-1.5 pt-2 pb-2.5 outline-none"
     >
+      {/* One underline that slides between tabs, rather than two swapping. */}
+      {active ? (
+        <motion.span
+          layoutId="friends-tab-underline"
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-0.5 bg-white"
+          transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }}
+        />
+      ) : null}
       <span
         className={cn(
           'text-[13px] leading-4 font-medium',
