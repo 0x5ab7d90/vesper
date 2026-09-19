@@ -377,6 +377,9 @@ export type TooltipProps = UseTooltipOptions & {
   label: React.ReactNode
   children: TriggerChild
   side?: 'top' | 'bottom'
+  /** Where the bubble grows from: centred on the trigger, or from its left edge outward —
+   *  for triggers hugging a clipped container's edge, where a centred bubble would be cut. */
+  align?: 'center' | 'start'
   className?: string
   style?: React.CSSProperties
   contentClassName?: string
@@ -396,6 +399,7 @@ export function Tooltip({
   label,
   children,
   side = 'top',
+  align = 'center',
   disabled = false,
   openDelay,
   closeDelay,
@@ -456,7 +460,9 @@ export function Tooltip({
                 }
           }
           transition={reduced ? { duration: 0 } : { ...(skipped ? WARM : RISE), layout: GLIDE }}
-          style={{ transformOrigin: side === 'top' ? '50% 100%' : '50% 0%' }}
+          style={{
+            transformOrigin: `${align === 'center' ? '50%' : '0%'} ${side === 'top' ? '100%' : '0%'}`
+          }}
           className={cn(
             'relative w-max max-w-[220px] shrink-0 overflow-hidden rounded-md px-2 py-1 text-[12px] leading-4 font-medium text-text',
             contentClassName
@@ -496,7 +502,10 @@ export function Tooltip({
           directions, so it stays centred whatever the label's width. */}
       <span
         aria-hidden={!open}
-        className="pointer-events-none absolute left-1/2 z-[100] flex w-0 justify-center"
+        className={cn(
+          'pointer-events-none absolute z-[100] flex w-0',
+          align === 'center' ? 'left-1/2 justify-center' : 'left-0 justify-start'
+        )}
         style={side === 'top' ? { bottom: 'calc(100% + 7px)' } : { top: 'calc(100% + 7px)' }}
       >
         {bubble}

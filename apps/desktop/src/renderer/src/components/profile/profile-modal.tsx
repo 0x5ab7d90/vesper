@@ -14,6 +14,7 @@ import { CloseIcon, MenuDotsIcon, PlusIcon } from '@renderer/components/icons'
 import { DitherCorner } from '@renderer/components/brand/dither-corner'
 import { NowPlaying, type NowPlayingData } from '@renderer/components/profile/now-playing'
 import { Showcase } from '@renderer/components/profile/showcase'
+import { Badges } from '@renderer/components/profile/badges'
 import { StatsTab } from '@renderer/components/profile/stats-tab'
 import { BANNER_PALETTES } from '@renderer/lib/banner-palettes'
 import { closeProfile, useProfileModalUsername } from '@renderer/lib/profile-modal'
@@ -179,8 +180,11 @@ function Identity({
           <h2 className="truncate text-[18px] leading-6 font-medium tracking-[-0.01em] text-text">
             {profile.displayName}
           </h2>
-          <span className="truncate text-[12px] leading-4 font-medium text-text-tertiary">
-            @{profile.username}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[12px] leading-4 font-medium text-text-tertiary">
+              @{profile.username}
+            </span>
+            <Badges profile={profile} />
           </span>
         </div>
         {profile.bio ? (
