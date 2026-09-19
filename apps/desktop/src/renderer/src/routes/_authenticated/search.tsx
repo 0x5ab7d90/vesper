@@ -45,7 +45,9 @@ function SearchPage(): React.JSX.Element {
   if (!query) {
     return (
       <div className="flex h-full flex-col gap-4 px-6 pt-5 pb-12">
-        <h1 className="text-[24px] leading-tight font-bold tracking-[-0.02em] text-text">Search</h1>
+        <h1 className="text-[24px] leading-tight font-bold tracking-[-0.02em] text-balance text-text">
+          Search
+        </h1>
         <p className="text-[13px] font-medium text-text-tertiary">
           Type a query in the search bar above to find movies, series, people, and users.
         </p>
@@ -56,7 +58,7 @@ function SearchPage(): React.JSX.Element {
   return (
     <div className="flex flex-col gap-8 px-6 pt-5 pb-12">
       <header>
-        <h1 className="text-[24px] leading-tight font-bold tracking-[-0.02em] text-text">
+        <h1 className="text-[24px] leading-tight font-bold tracking-[-0.02em] text-balance text-text">
           Results for &ldquo;{query}&rdquo;
         </h1>
       </header>

@@ -4,6 +4,7 @@ import { AnimatePresence, m as motion, useReducedMotion } from 'motion/react'
 import { useNavigate } from '@tanstack/react-router'
 import { cn } from '@renderer/lib/cn'
 import { SectionTitle } from '@renderer/components/ui/section-title'
+import { EASE_OUT, EXIT_FADE } from '@renderer/lib/motion'
 
 export interface PersonFilmographyItem {
   id: number
@@ -17,7 +18,7 @@ export interface PersonFilmographyItem {
 
 type Filter = 'all' | 'movie' | 'tv'
 
-const ANIM = { duration: 0.18, ease: [0.23, 1, 0.32, 1] as [number, number, number, number] }
+const ANIM = { duration: 0.18, ease: EASE_OUT }
 
 export function PersonFilmography({
   items
@@ -50,7 +51,7 @@ export function PersonFilmography({
               layout={reduced ? false : 'position'}
               initial={reduced ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={EXIT_FADE}
               transition={ANIM}
               onClick={() =>
                 navigate({

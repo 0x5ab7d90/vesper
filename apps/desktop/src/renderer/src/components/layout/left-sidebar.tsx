@@ -15,11 +15,9 @@ import { useAppVersion } from '@renderer/hooks/use-app-version'
 import { tmdbImage } from '@renderer/lib/tmdb'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
+import { EASE_OUT, EXIT_FADE } from '@renderer/lib/motion'
 
-const ROW_ANIM = {
-  duration: 0.18,
-  ease: [0.23, 1, 0.32, 1] as [number, number, number, number]
-}
+const ROW_ANIM = { duration: 0.18, ease: EASE_OUT }
 
 const DRAG_LIFT = {
   zIndex: 50
@@ -245,7 +243,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                   layout={reduced ? false : true}
                   initial={reduced ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                  exit={EXIT_FADE}
                   transition={ROW_ANIM}
                 >
                   {renderItem(list)}
@@ -262,7 +260,7 @@ export const LeftSidebar = memo(function LeftSidebar({
                     layout={reduced ? false : true}
                     initial={reduced ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    exit={EXIT_FADE}
                     transition={ROW_ANIM}
                   >
                     {renderItem(list)}
@@ -288,7 +286,7 @@ export const LeftSidebar = memo(function LeftSidebar({
         <button
           type="button"
           onClick={() => setFeedbackOpen(true)}
-          className="bg-transparent outline-none transition-colors hover:text-text"
+          className="bg-transparent outline-none hover:text-text"
         >
           Feedback
         </button>

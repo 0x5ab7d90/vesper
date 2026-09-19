@@ -19,11 +19,13 @@ const GEOMETRY: Record<SquircleVariant, { radius: number; clip: number; handle: 
   'inset-sm': { radius: 14, clip: 8, handle: 2 }
 }
 
+// The edge is an inset ring rather than a border: it takes no space, so nested surfaces keep
+// their geometry, and it reads as light on the rim rather than a line drawn around the box.
 const CHROME: Record<SquircleVariant, string> = {
-  frame: 'border border-white/[0.06] bg-surface-2',
-  inset: 'border border-white/[0.05] bg-surface',
-  'frame-sm': 'border border-white/[0.06] bg-surface-2',
-  'inset-sm': 'border border-white/[0.05] bg-surface'
+  frame: 'bg-surface-2 shadow-edge',
+  inset: 'bg-surface shadow-edge-soft',
+  'frame-sm': 'bg-surface-2 shadow-edge',
+  'inset-sm': 'bg-surface shadow-edge-soft'
 }
 
 export function squircleStyle(variant: SquircleVariant): React.CSSProperties {

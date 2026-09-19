@@ -22,6 +22,8 @@ import {
   type EspnCard,
   type EspnCompetitor
 } from '@renderer/lib/fights/espn'
+import { IMG_OUTLINE } from '@renderer/components/ui/image-outline'
+import { EASE_IN, EASE_OUT } from '@renderer/lib/motion'
 
 // The Fight card: a UFC event's bout list with tale-of-the-tape comparison.
 // An enhancement, never a gate — when ESPN has nothing for this event, a live
@@ -159,11 +161,15 @@ function Hero({
   return (
     <div className="flex items-center gap-6">
       {poster ? (
-        <img src={poster} alt="" className="h-[150px] w-[266px] shrink-0 rounded-xl object-cover" />
+        <img
+          src={poster}
+          alt=""
+          className={cn('h-[150px] w-[266px] shrink-0 rounded-xl object-cover', IMG_OUTLINE)}
+        />
       ) : null}
       <div className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="text-[22px] leading-[26px] font-bold text-text">
+          <h1 className="text-[22px] leading-[26px] font-bold tracking-[-0.01em] text-balance text-text">
             {eventName ?? match.title}
           </h1>
           <span className="text-[13px] leading-4 text-text-muted">{when}</span>
@@ -248,8 +254,8 @@ function BoutCard({ bout }: { bout: EspnBout }): React.JSX.Element {
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ height: 0, opacity: 0, transition: { duration: 0.16, ease: EASE_IN } }}
+            transition={{ duration: 0.3, ease: EASE_OUT }}
             className="overflow-hidden"
           >
             <TaleOfTheTape a={a} b={b} />
@@ -295,7 +301,7 @@ function Fighter({
             src={athlete.headshot.href}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover object-top"
+            className={cn('h-full w-full rounded-full object-cover object-top', IMG_OUTLINE)}
             onError={(e) => {
               e.currentTarget.style.display = 'none'
             }}

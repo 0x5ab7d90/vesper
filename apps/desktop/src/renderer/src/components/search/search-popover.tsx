@@ -33,6 +33,7 @@ import {
 } from '@renderer/lib/tmdb'
 import { api } from '@convex/_generated/api'
 import type { Doc } from '@convex/_generated/dataModel'
+import { SHEET_MOTION } from '@renderer/components/ui/popup-motion'
 
 const DEBOUNCE_MS = 150
 
@@ -139,7 +140,10 @@ export function SearchControl({ onOpenChange }: SearchControlProps): React.JSX.E
             className="z-[100]"
           >
             <Popover.Popup
-              className="z-[100] overflow-hidden rounded-t-none rounded-b-xl bg-surface-2 outline-none shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+              className={cn(
+                'z-[100] overflow-hidden rounded-t-none rounded-b-xl bg-surface-2 outline-none shadow-[0_8px_24px_rgba(0,0,0,0.4)]',
+                SHEET_MOTION
+              )}
               style={{
                 width: 'var(--anchor-width)',
                 clipPath: 'inset(0 -100px -100px -100px)'
@@ -550,7 +554,7 @@ function Cell({
             type="button"
             onClick={onOpenAll}
             aria-label={`See all ${title.toLowerCase()}`}
-            className="flex size-5 items-center justify-center rounded-full bg-transparent text-text-muted outline-none transition-colors duration-150 ease-out hover:text-text"
+            className="-m-0.5 flex size-6 items-center justify-center rounded-full bg-transparent text-text-muted outline-none hover:text-text"
           >
             <ArrowUpRightIcon className="size-3.5" />
           </button>
@@ -657,7 +661,7 @@ function RecentChip({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-7 shrink-0 items-center rounded-full bg-white/[0.06] px-2.5 text-[12px] leading-4 font-medium whitespace-nowrap text-text-secondary outline-none transition-colors duration-150 ease-out hover:bg-white/[0.1] hover:text-text"
+      className="inline-flex h-7 shrink-0 items-center rounded-full bg-white/[0.06] px-2.5 text-[12px] leading-4 font-medium whitespace-nowrap text-text-secondary outline-none hover:bg-white/[0.1] hover:text-text"
     >
       <span className="max-w-[160px] truncate">{item.title}</span>
     </button>
@@ -731,7 +735,7 @@ function TrailingSlot({ open, voice }: { open: boolean; voice: VoiceSearch }): R
             e.preventDefault()
             navigate({ to: '/explore' })
           }}
-          className="size-9 rounded-lg transition-[color,opacity] duration-150 ease-out hover:text-text"
+          className="size-9 rounded-lg hover:text-text"
         >
           <ProjectsIcon className="size-[19px]" />
         </IconButton>
@@ -750,10 +754,7 @@ function TrailingSlot({ open, voice }: { open: boolean; voice: VoiceSearch }): R
             e.preventDefault()
             voice.toggle()
           }}
-          className={cn(
-            'size-9 rounded-lg transition-[color,opacity] duration-150 ease-out hover:text-text',
-            listening && 'text-text'
-          )}
+          className={cn('size-9 rounded-lg hover:text-text', listening && 'text-text')}
         >
           <MicIcon className="size-[19px]" />
         </IconButton>

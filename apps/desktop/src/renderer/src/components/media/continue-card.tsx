@@ -2,6 +2,8 @@ import { useRef } from 'react'
 import { ProgressBar } from '@renderer/components/ui/progress-bar'
 import { PlayIcon } from '@renderer/components/icons'
 import { usePreloadRoute, type PreloadTarget } from '@renderer/lib/use-preload-route'
+import { cn } from '@renderer/lib/cn'
+import { IMAGE_EDGE } from '@renderer/components/ui/image-outline'
 
 export interface ContinueCardProps {
   title: string
@@ -29,7 +31,10 @@ export function ContinueCard({
       ref={ref}
       type="button"
       onClick={onClick}
-      className="relative flex h-[140px] w-[220px] shrink-0 flex-col overflow-hidden rounded-xl bg-cover bg-center p-3 text-left outline-none"
+      className={cn(
+        'relative flex h-[140px] w-[220px] shrink-0 flex-col overflow-hidden rounded-xl bg-cover bg-center p-3 text-left outline-none',
+        IMAGE_EDGE
+      )}
       style={{ backgroundImage: `url(${backdrop})` }}
       aria-label={title}
     >
@@ -59,7 +64,9 @@ export function ContinueCard({
       <div className="relative flex items-center gap-2">
         <PlayIcon className="size-3.5 text-white" />
         <ProgressBar value={progress} tone="light" className="flex-1" />
-        <span className="shrink-0 text-[12px] leading-4 font-medium text-white">{remaining}</span>
+        <span className="shrink-0 text-[12px] leading-4 font-medium text-white tabular-nums">
+          {remaining}
+        </span>
       </div>
     </button>
   )

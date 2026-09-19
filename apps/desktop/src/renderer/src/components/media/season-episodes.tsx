@@ -11,6 +11,7 @@ import { shareUrlForEpisode } from '@renderer/lib/share-url'
 import type { TmdbEpisode, TmdbSeasonSummary, TmdbTvDetails } from '@renderer/lib/tmdb'
 import { cn } from '@renderer/lib/cn'
 import { api } from '@convex/_generated/api'
+import { scrollFadeStyle, useScrollEdges } from '@renderer/lib/scroll-edges'
 
 interface SeasonEpisodesProps {
   details: TmdbTvDetails
@@ -165,6 +166,7 @@ function EpisodesRow({
   const markWatched = useMutation(api.playback.markWatched)
   const removeProgress = useMutation(api.playback.remove)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const edges = useScrollEdges(scrollRef)
 
   const progressByEpisode = useMemo(() => {
     const map = new Map<number, { pct: number; watched: boolean }>()
@@ -237,7 +239,11 @@ function EpisodesRow({
 
   return (
     <div className="group relative">
-      <div ref={scrollRef} className="scroll-hide flex gap-3 overflow-x-auto py-1 pl-6">
+      <div
+        ref={scrollRef}
+        className="scroll-hide flex gap-3 overflow-x-auto py-1 pl-6"
+        style={scrollFadeStyle(edges)}
+      >
         {episodes.map((ep) => {
           const prog = progressByEpisode.get(ep.episode_number)
           return (

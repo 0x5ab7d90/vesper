@@ -8,6 +8,8 @@ import { Avatar } from '@renderer/components/ui/avatar'
 import { PeopleGroupIcon, SettingsIcon, SignOutIcon, UserIcon } from '@renderer/components/icons'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
 import { openProfile } from '@renderer/lib/profile-modal'
+import { cn } from '@renderer/lib/cn'
+import { POPUP_MOTION } from '@renderer/components/ui/popup-motion'
 
 interface UserMenuProps {
   /** Told whenever the menu opens or closes, so the title bar can give up its drag region. */
@@ -57,13 +59,16 @@ export function UserMenu({ onOpenChange }: UserMenuProps): React.JSX.Element {
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={8} className="z-[100]">
           <Menu.Popup
-            className="flex w-[260px] flex-col border border-white/[0.06] bg-surface-2 p-1 shadow-[0_8px_24px_rgba(0,0,0,0.4)] outline-none"
+            className={cn(
+              'flex w-[260px] flex-col bg-surface-2 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.4)] outline-none',
+              POPUP_MOTION
+            )}
             style={squircleStyle('frame-sm')}
           >
             <button
               type="button"
               onClick={goProfile}
-              className="flex items-center gap-3 rounded-lg bg-transparent px-3 py-2.5 text-left outline-none transition-colors hover:bg-white/[0.06]"
+              className="flex items-center gap-3 rounded-lg bg-transparent px-3 py-2.5 text-left outline-none hover:bg-white/[0.06]"
             >
               <Avatar size="md" alt={displayName} seed={seed} src={avatarSrc} className="size-10" />
               <div className="flex min-w-0 flex-col">

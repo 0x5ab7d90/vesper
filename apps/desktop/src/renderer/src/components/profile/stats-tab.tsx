@@ -18,14 +18,17 @@ import { cn } from '@renderer/lib/cn'
 import { tmdbImage } from '@renderer/lib/tmdb'
 import { api } from '@convex/_generated/api'
 import type { Doc } from '@convex/_generated/dataModel'
+import { IMG_OUTLINE } from '@renderer/components/ui/image-outline'
 
 // One series, one hue: every chart here is a magnitude read, so the mascot violet carries
 // all of them and text stays in the text tokens (dataviz: colour follows the job, not rank).
 const SERIES = { count: { label: 'Titles', color: 'violet' as const } }
 
 // Chart labels in the app's sans at a readable size, overriding the kit's mono default so the
-// screen and the exported image agree on the same font.
-const CHART_TEXT = '[&_svg_text]:font-sans [&_svg_text]:text-[11px] [&_svg_text]:font-medium'
+// screen and the exported image agree on the same font. Small text opens up by a hair, the
+// way large text tightens.
+const CHART_TEXT =
+  '[&_svg_text]:font-sans [&_svg_text]:text-[11px] [&_svg_text]:font-medium [&_svg_text]:tracking-[0.01em] [&_svg_text]:tabular-nums'
 
 const LANGUAGE_NAMES = new Intl.DisplayNames(['en'], { type: 'language' })
 
@@ -124,7 +127,7 @@ function ShareCard({
   return (
     <div
       ref={cardRef}
-      className="relative flex flex-col gap-5 overflow-hidden border border-white/[0.06] bg-surface-2 p-5"
+      className="relative flex flex-col gap-5 overflow-hidden bg-surface-2 p-5 shadow-edge"
       style={squircleStyle('frame')}
     >
       {/* Three rows of two: each panel gets the same width, so nothing crowds the top. */}
@@ -399,7 +402,7 @@ function Fact({
         {poster ? (
           <span
             aria-hidden
-            className="h-9 w-6 shrink-0 rounded-[4px] bg-cover bg-center"
+            className={cn('h-9 w-6 shrink-0 rounded-[4px] bg-cover bg-center', IMG_OUTLINE)}
             style={{
               backgroundColor: '#2a2a2a',
               backgroundImage: `url(${tmdbImage(poster, 'w92') ?? ''})`
@@ -407,7 +410,9 @@ function Fact({
           />
         ) : null}
         <div className="flex min-w-0 flex-col gap-0.5">
-          <dd className="truncate text-[13px] leading-4 font-medium text-text">{value}</dd>
+          <dd className="truncate text-[13px] leading-4 font-medium text-text tabular-nums">
+            {value}
+          </dd>
           <dd className="text-[12px] leading-4 font-medium text-text-tertiary tabular-nums">
             {detail}
           </dd>
@@ -422,7 +427,7 @@ function Fact({
 function Note({ children, art }: { children: React.ReactNode; art?: boolean }): React.JSX.Element {
   return (
     <div
-      className="flex h-full min-h-[200px] flex-col items-center justify-center gap-4 border border-white/[0.06] bg-surface-2 p-5"
+      className="flex h-full min-h-[200px] flex-col items-center justify-center gap-4 bg-surface-2 p-5 shadow-edge"
       style={squircleStyle('frame')}
     >
       {art ? <StatsEmptyArt className="w-[168px]" /> : null}
@@ -537,7 +542,7 @@ function StatsSkeleton({ label }: { label?: string }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3" aria-busy>
       <div
-        className="relative flex flex-col gap-5 border border-white/[0.06] bg-surface-2 p-5"
+        className="relative flex flex-col gap-5 bg-surface-2 p-5 shadow-edge"
         style={squircleStyle('frame')}
       >
         <div className="flex flex-col gap-2">

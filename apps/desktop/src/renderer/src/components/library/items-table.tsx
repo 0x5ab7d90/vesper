@@ -347,7 +347,7 @@ export function ItemsTable({
                   flexShrink: 0
                 }}
                 className={cn(
-                  'flex items-center px-3 py-2 text-[11px] leading-4 font-semibold tracking-[0.04em] uppercase text-text-tertiary select-none',
+                  'flex items-center px-3 py-2 text-[11px] leading-4 font-semibold tracking-[0.06em] uppercase text-text-tertiary select-none',
                   canSort && 'hover:text-text'
                 )}
                 onClick={canSort ? h.column.getToggleSortingHandler() : undefined}
@@ -387,7 +387,7 @@ export function ItemsTable({
                     go(it)
                   }
                 }}
-                className="absolute top-0 left-0 flex w-full items-center outline-none transition-colors hover:bg-white/[0.04]"
+                className="absolute top-0 left-0 flex w-full items-center outline-none hover:bg-white/[0.04]"
                 style={{
                   height: ROW_HEIGHT,
                   transform: `translateY(${vr.start}px)`

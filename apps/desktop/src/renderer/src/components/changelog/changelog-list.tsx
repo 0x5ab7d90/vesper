@@ -65,10 +65,10 @@ export function ChangelogList(): React.JSX.Element {
   return (
     <article className="flex flex-col">
       <header className="flex flex-col gap-1 pb-2">
-        <h2 className="text-[18px] leading-6 font-bold tracking-[-0.01em] text-text">
+        <h2 className="text-[18px] leading-6 font-bold tracking-[-0.01em] text-text tabular-nums">
           v{entry.version}
         </h2>
-        <p className="text-[12px] leading-4 font-medium text-text-tertiary">
+        <p className="text-[12px] leading-4 font-medium text-text-tertiary tabular-nums">
           {dateFmt.format(new Date(entry.date))}
         </p>
       </header>

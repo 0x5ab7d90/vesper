@@ -12,6 +12,7 @@ import { searchItemTitle, searchItemYear, tmdbImage } from '@renderer/lib/tmdb'
 import { cn } from '@renderer/lib/cn'
 import { api } from '@convex/_generated/api'
 import type { Doc } from '@convex/_generated/dataModel'
+import { IMAGE_EDGE } from '@renderer/components/ui/image-outline'
 
 const SLOTS = 4
 
@@ -52,8 +53,10 @@ export function Showcase({
 
 /* ---------- slots ---------- */
 
-const SLOT_BASE =
-  'relative aspect-[2/3] w-full overflow-hidden rounded-[10px] outline-none transition-transform duration-150 ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-white/40'
+const SLOT_BASE = cn(
+  'relative aspect-[2/3] w-full overflow-hidden rounded-[10px] outline-none transition-[scale] duration-(--press-dur) ease-(--press-ease) active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-white/40',
+  IMAGE_EDGE
+)
 
 function Slot({
   item,
@@ -80,7 +83,7 @@ function Slot({
       aria-label="Add a favorite"
       className={cn(
         SLOT_BASE,
-        'flex items-center justify-center border border-dashed border-white/15 text-text-muted transition-colors hover:border-white/30 hover:text-text-tertiary'
+        'flex items-center justify-center border border-dashed border-white/15 text-text-muted hover:border-white/30 hover:text-text-tertiary'
       )}
       {...props}
     >
@@ -125,9 +128,9 @@ function SlotPicker({
         <Popover.Positioner side="right" align="start" sideOffset={10} className="z-[110]">
           <Popover.Popup
             className={cn(
-              'w-[300px] overflow-hidden border border-white/[0.06] bg-surface-2 shadow-[0_12px_32px_rgba(0,0,0,0.45)] outline-none',
+              'w-[300px] overflow-hidden bg-surface-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_12px_32px_rgba(0,0,0,0.45)] outline-none',
               // Grows from the slot it belongs to, not from its own centre.
-              'origin-[var(--transform-origin)] transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
+              'origin-(--transform-origin) transition-[scale,opacity] duration-150 ease-(--ease-out) data-[ending-style]:duration-75',
               'data-[starting-style]:scale-[0.97] data-[starting-style]:opacity-0',
               'data-[ending-style]:scale-[0.97] data-[ending-style]:opacity-0 data-[ending-style]:duration-100'
             )}
@@ -200,7 +203,7 @@ function PickerBody({
         />
       </label>
       <div
-        className="flex min-h-[44px] flex-col gap-0.5 border border-white/[0.05] bg-surface p-1"
+        className="flex min-h-[44px] flex-col gap-0.5 bg-surface p-1 shadow-edge-soft"
         style={squircleStyle('inset-sm')}
       >
         {query.length === 0 ? (
@@ -224,7 +227,7 @@ function PickerBody({
               key={`${hit.media_type}-${hit.id}`}
               type="button"
               onClick={() => void pick(hit)}
-              className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-left outline-none transition-colors duration-100 hover:bg-white/[0.06] focus-visible:bg-white/[0.06]"
+              className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-left outline-none hover:bg-white/[0.06] focus-visible:bg-white/[0.06]"
             >
               <span
                 aria-hidden
@@ -249,7 +252,7 @@ function PickerBody({
         <button
           type="button"
           onClick={() => void remove()}
-          className="mt-1 h-8 rounded-lg px-2.5 text-left text-[12px] leading-4 font-medium text-text-muted outline-none transition-colors duration-100 hover:bg-white/[0.06] hover:text-red-400"
+          className="mt-1 h-8 rounded-lg px-2.5 text-left text-[12px] leading-4 font-medium text-text-muted outline-none hover:bg-white/[0.06] hover:text-red-400"
         >
           Remove from favorites
         </button>

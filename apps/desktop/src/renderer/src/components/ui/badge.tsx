@@ -6,7 +6,7 @@ const badgeVariants = cva('inline-flex items-center justify-center font-medium l
     variant: {
       chip: 'bg-overlay-soft text-text rounded-[5px]',
       tag: 'bg-transparent text-text-secondary',
-      meta: 'bg-overlay-soft text-text rounded-[5px] uppercase tracking-wide'
+      meta: 'bg-overlay-soft text-text rounded-[5px] uppercase tracking-[0.06em]'
     },
     size: {
       sm: 'h-[14px] px-1.5 text-[11px]',

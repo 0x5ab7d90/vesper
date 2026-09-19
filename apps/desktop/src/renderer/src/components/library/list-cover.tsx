@@ -1,5 +1,6 @@
 import { HeartIcon } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/cn'
+import { IMAGE_EDGE, IMG_OUTLINE } from '@renderer/components/ui/image-outline'
 
 export type ListKind = 'liked' | 'watched' | 'custom'
 
@@ -37,6 +38,7 @@ export function ListCover({
         className={cn(
           SIZE_CLASS[size],
           'shrink-0 overflow-hidden bg-surface-3 bg-cover bg-center',
+          IMG_OUTLINE,
           className
         )}
         style={{ backgroundImage: `url(${coverUrl})` }}
@@ -84,6 +86,7 @@ export function ListCover({
         className={cn(
           SIZE_CLASS[size],
           'shrink-0 overflow-hidden bg-surface-3 bg-cover bg-center',
+          IMG_OUTLINE,
           className
         )}
         style={{ backgroundImage: `url(${url})` }}
@@ -95,7 +98,12 @@ export function ListCover({
   const [a, b, c, d] = padTo4(visible)
   return (
     <div
-      className={cn(SIZE_CLASS[size], 'relative shrink-0 overflow-hidden bg-surface-3', className)}
+      className={cn(
+        SIZE_CLASS[size],
+        'relative shrink-0 overflow-hidden bg-surface-3',
+        IMAGE_EDGE,
+        className
+      )}
       aria-label={name}
     >
       <div className="flex h-full w-full gap-px">

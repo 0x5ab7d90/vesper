@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cn } from '@renderer/lib/cn'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
+import { POPUP_MOTION } from '@renderer/components/ui/popup-motion'
 
 export interface SelectOption {
   value: string
@@ -64,17 +65,18 @@ export function Select({
         >
           <BaseSelect.Popup
             className={cn(
-              'min-w-[var(--anchor-width)] overflow-hidden border border-white/[0.06] bg-surface-2 outline-none shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
+              'min-w-[var(--anchor-width)] overflow-hidden bg-surface-2 outline-none shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),0_4px_16px_rgba(0,0,0,0.3)]',
+              POPUP_MOTION
             )}
             style={squircleStyle('frame-sm')}
           >
-            <BaseSelect.List className="flex max-h-[320px] flex-col gap-1 overflow-y-auto p-1.5">
+            <BaseSelect.List className="flex max-h-[320px] flex-col overflow-y-auto p-1.5">
               {options.map((o) => (
                 <BaseSelect.Item
                   key={o.value}
                   value={o.value}
                   className={cn(
-                    'flex items-center justify-between gap-2 rounded-lg bg-transparent px-3 py-2 text-[14px] leading-5 font-medium text-white outline-none select-none data-[highlighted]:bg-white/[0.08]'
+                    'flex items-center justify-between gap-2 rounded-[12px] bg-transparent px-3 py-2 text-[14px] leading-5 font-medium text-white outline-none select-none data-[highlighted]:bg-white/[0.08]'
                   )}
                 >
                   <span className="flex min-w-0 flex-1 items-center gap-2">

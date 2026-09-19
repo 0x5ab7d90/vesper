@@ -32,7 +32,7 @@ export function Segmented<T extends string>({
     >
       <span
         aria-hidden
-        className="absolute top-0.5 bottom-0.5 left-0.5 rounded-full bg-white transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        className="absolute top-0.5 bottom-0.5 left-0.5 rounded-full bg-white transition-transform duration-200 ease-(--ease-out)"
         style={{
           width: `calc((100% - 4px) / ${options.length})`,
           transform: `translateX(${index * 100}%)`
@@ -46,7 +46,7 @@ export function Segmented<T extends string>({
           aria-selected={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'relative z-10 flex h-7 items-center justify-center rounded-full px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap outline-none transition-colors duration-200',
+            'relative z-10 flex h-7 items-center justify-center rounded-full px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap outline-none',
             o.value === value ? 'text-black' : 'text-text-tertiary'
           )}
         >

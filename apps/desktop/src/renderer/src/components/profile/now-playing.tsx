@@ -65,7 +65,7 @@ function NowPlayingCard({ now }: { now: Now }): React.JSX.Element {
           viewTransition: false
         })
       }}
-      className="flex w-full items-center gap-3 border border-white/[0.06] bg-surface-2 p-2 text-left outline-none transition-[transform,background-color] duration-150 ease-out hover:bg-surface-3 active:scale-[0.98]"
+      className="flex w-full items-center gap-3 bg-surface-2 p-2 text-left shadow-edge outline-none transition-[scale] duration-(--press-dur) ease-(--press-ease) hover:bg-surface-3 active:scale-[0.98]"
       style={squircleStyle('inset-sm')}
       aria-label={`${now.status === 'watching' ? 'Watching' : 'Paused on'} ${now.title}, ${readout}`}
     >

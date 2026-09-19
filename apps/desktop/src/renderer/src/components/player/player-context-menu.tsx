@@ -33,7 +33,7 @@ function anime4kNote(status: Anime4kStatus | null): string | null {
 }
 
 const popupClass =
-  'min-w-[220px] origin-[var(--transform-origin)] bg-[#1a1a1aF2] p-1 text-white shadow-xl backdrop-blur-2xl outline-none transition-[scale,opacity] duration-100 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0'
+  'min-w-[220px] origin-[var(--transform-origin)] bg-[#1a1a1aF2] p-1 text-white shadow-xl backdrop-blur-2xl outline-none transition-[scale,opacity] duration-100 ease-(--ease-out) data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[ending-style]:duration-50'
 
 const popupStyle = squircleStyle('frame-sm')
 

@@ -16,6 +16,7 @@ import { cn } from '@renderer/lib/cn'
 import { SquircleSurface } from '@renderer/components/ui/squircle-surface'
 import { api } from '@convex/_generated/api'
 import type { Doc, Id } from '@convex/_generated/dataModel'
+import { BACKDROP_MOTION, DIALOG_MOTION } from '@renderer/components/ui/popup-motion'
 
 const NAME_MAX = 40
 const DESC_MAX = 200
@@ -52,13 +53,20 @@ export function ListFormModal({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+        <Dialog.Backdrop
+          className={cn('fixed inset-0 z-50 bg-black/60 backdrop-blur-sm', BACKDROP_MOTION)}
+        />
         <Dialog.Popup
           aria-label={mode === 'edit' ? 'Edit list' : 'New list'}
-          className="fixed top-1/2 left-1/2 z-50 w-[440px] -translate-x-1/2 -translate-y-1/2 outline-none"
+          className={cn(
+            'fixed top-1/2 left-1/2 z-50 w-[440px] -translate-x-1/2 -translate-y-1/2 outline-none',
+            DIALOG_MOTION
+          )}
         >
           <SquircleSurface variant="frame" className="p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]">
-            {open ? <ModalBody mode={mode} list={list} onClose={() => onOpenChange(false)} /> : null}
+            {open ? (
+              <ModalBody mode={mode} list={list} onClose={() => onOpenChange(false)} />
+            ) : null}
           </SquircleSurface>
         </Dialog.Popup>
       </Dialog.Portal>
@@ -330,7 +338,8 @@ function CoverThumb({
             onClick={() => void onRemove()}
             aria-label="Remove cover"
             disabled={busy}
-            className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-black text-white outline-none ring-2 ring-surface transition-transform hover:scale-110"
+            // The visible circle stays small; the pseudo-element gives it a 32px target.
+            className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-black text-white outline-none ring-2 ring-surface after:absolute after:-inset-1.5 after:content-['']"
           >
             <CloseIcon className="size-3" />
           </button>

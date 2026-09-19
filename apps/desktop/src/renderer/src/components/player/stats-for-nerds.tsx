@@ -3,6 +3,7 @@ import { AnimatePresence, m as motion } from 'motion/react'
 import type { PlayerStats } from '@renderer/lib/player/types'
 import { anime4kStatusLabel } from '@renderer/lib/player/anime4k'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
+import { EASE_OUT, EXIT_FADE } from '@renderer/lib/motion'
 
 interface Props {
   visible: boolean
@@ -141,8 +142,8 @@ export function StatsForNerds({
           style={squircleStyle('inset-sm')}
           initial={{ opacity: 0, x: 4 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 4 }}
-          transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+          exit={EXIT_FADE}
+          transition={{ duration: 0.16, ease: EASE_OUT }}
         >
           <div className="mb-1.5 flex items-center justify-between gap-3">
             <span className="text-[10px] font-bold tracking-[0.08em] text-white/55 uppercase">
@@ -152,7 +153,7 @@ export function StatsForNerds({
               <button
                 type="button"
                 onClick={onCopy}
-                className="text-[10px] tracking-[0.04em] text-white/55 uppercase outline-none hover:text-white"
+                className="text-[10px] tracking-[0.06em] text-white/55 uppercase outline-none hover:text-white"
               >
                 {copied ? 'Copied' : 'Copy JSON'}
               </button>

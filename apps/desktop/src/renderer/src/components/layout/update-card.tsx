@@ -44,7 +44,7 @@ export function UpdateCard(): React.JSX.Element | null {
             type="button"
             onClick={dismiss}
             aria-label="Dismiss"
-            className="-my-1 flex size-6 flex-shrink-0 items-center justify-center rounded-full text-text-tertiary outline-none transition-colors hover:bg-white/5 hover:text-text"
+            className="-my-1 flex size-6 flex-shrink-0 items-center justify-center rounded-full text-text-tertiary outline-none hover:bg-white/5 hover:text-text"
           >
             <span aria-hidden className="inline-block h-[2px] w-3.5 rounded-full bg-current" />
           </button>
@@ -57,7 +57,7 @@ export function UpdateCard(): React.JSX.Element | null {
           onClick={() => {
             localStorage.setItem(LAST_SEEN_KEY, entry.version)
           }}
-          className="mx-0.5 mt-1.5 mb-0.5 flex h-9 items-center justify-center gap-1 rounded-full bg-white/10 text-[12px] font-medium text-text shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] outline-none transition-[transform,background-color] duration-150 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-white/[0.16] active:scale-[0.96]"
+          className="mx-0.5 mt-1.5 mb-0.5 flex h-9 items-center justify-center gap-1 rounded-full bg-white/10 text-[12px] font-medium text-text shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] outline-none transition-[scale] duration-(--press-dur) ease-(--press-ease) hover:bg-white/[0.16] active:scale-[0.96]"
         >
           See what changed
           <ChevronRight />
