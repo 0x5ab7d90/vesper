@@ -101,7 +101,7 @@ function TraktIntegration(): React.JSX.Element {
           <button
             type="button"
             onClick={() => void disconnect()}
-            className="flex h-[30px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.06] px-3.5 text-[12px] font-medium text-text-tertiary outline-none transition-opacity active:opacity-80"
+            className="flex h-[30px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.06] px-3.5 text-[12px] font-medium text-text outline-none transition-opacity active:opacity-80"
           >
             Disconnect
           </button>

@@ -145,8 +145,10 @@ export function TopBar({
   )
 }
 
+// rounded-[16px], not rounded-full: the full radius opts out of the app's squircle corners
+// (main.css), and these read better as squircles than as true circles.
 const WIN_CONTROL =
-  'flex size-8 shrink-0 items-center justify-center rounded-full bg-transparent text-text-tertiary outline-none transition-colors duration-150 ease-out active:opacity-70'
+  'flex size-8 shrink-0 items-center justify-center rounded-[16px] bg-transparent text-text-tertiary outline-none transition-colors duration-150 ease-out active:opacity-70'
 
 function WindowsControls(): React.JSX.Element {
   return (
