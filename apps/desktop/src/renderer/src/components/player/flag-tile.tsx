@@ -53,7 +53,7 @@ import {
   IconMexico,
   type IconProps
 } from 'nucleo-flags'
-import { langToCountry } from '@renderer/lib/lang'
+import { langLabel, langToCountry } from '@renderer/lib/lang'
 
 const COUNTRY_TO_FLAG: Record<string, React.FC<IconProps>> = {
   us: IconUnitedStates,
@@ -109,14 +109,25 @@ const COUNTRY_TO_FLAG: Record<string, React.FC<IconProps>> = {
   mx: IconMexico
 }
 
+/**
+ * The audio language as a flag. A language with no flag of its own shows its
+ * code in small caps on the same tile, so the row still says what it is.
+ */
 export function FlagTile({ lang }: { lang: string }): React.JSX.Element {
   const country = langToCountry(lang)
   const flag = country ? COUNTRY_TO_FLAG[country] : undefined
   return (
-    <div className="flex h-4 w-[22px] shrink-0 items-center justify-center overflow-hidden rounded-[2px] bg-white/[0.08]">
-      {flag
-        ? createElement(flag, { width: 22, height: 16, preserveAspectRatio: 'xMidYMid slice' })
-        : null}
+    <div
+      className="flex h-4 w-[22px] shrink-0 items-center justify-center overflow-hidden rounded-[2px] bg-white/[0.08]"
+      title={langLabel(lang)}
+    >
+      {flag ? (
+        createElement(flag, { width: 22, height: 16, preserveAspectRatio: 'xMidYMid slice' })
+      ) : (
+        <span className="text-[8px] leading-none font-semibold tracking-[0.08em] text-text-tertiary uppercase">
+          {lang.slice(0, 3)}
+        </span>
+      )}
     </div>
   )
 }
