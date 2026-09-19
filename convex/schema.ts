@@ -11,6 +11,32 @@ export const showcaseItemValidator = v.object({
   posterPath: v.optional(v.string())
 })
 
+export const imdbUnmatchedValidator = v.object({
+  title: v.string(),
+  year: v.optional(v.number()),
+  // IMDb's own type id ("tvEpisode", "videoGame", ...) or "no-match" when TMDB had nothing.
+  reason: v.string()
+})
+
+export const imdbTallyValidator = v.object({
+  ratings: v.number(),
+  watchlist: v.number(),
+  // Items written into custom lists, across all of them.
+  lists: v.optional(v.number()),
+  unmatched: v.array(imdbUnmatchedValidator),
+  finishedAt: v.optional(v.number())
+})
+
+// A public IMDb list (`ls…`) the user wants imported, and the Vesper list it feeds.
+export const imdbListValidator = v.object({
+  imdbListId: v.string(),
+  name: v.string(),
+  listId: v.optional(v.id('lists')),
+  // True when the list's name says its titles were watched ("Movies I've seen").
+  markWatched: v.boolean(),
+  total: v.optional(v.number())
+})
+
 export default defineSchema({
   ...authTables,
   profiles: defineTable({
@@ -152,6 +178,38 @@ export default defineSchema({
     syncWatched: v.boolean(),
     syncRatings: v.boolean(),
     lastSyncedAt: v.optional(v.number()),
+    createdAt: v.number()
+  }).index('by_userId', ['userId']),
+
+  // One IMDb Import per user: the pasted profile link, the ur id it resolved to, and the
+  // state of the current or most recent run. Imports are one-way and user-triggered.
+  imdbAccounts: defineTable({
+    userId: v.id('users'),
+    link: v.string(),
+    imdbUserId: v.optional(v.string()),
+    nickName: v.optional(v.string()),
+    watchlistListId: v.optional(v.id('lists')),
+    status: v.union(v.literal('running'), v.literal('done'), v.literal('failed')),
+    // Each run gets a fresh id; a page action whose id no longer matches stops quietly.
+    runId: v.string(),
+    progress: v.optional(v.object({ done: v.number(), total: v.number() })),
+    error: v.optional(
+      v.union(
+        v.literal('not-found'),
+        v.literal('private'),
+        v.literal('unavailable'),
+        v.literal('failed')
+      )
+    ),
+    lists: v.optional(v.array(imdbListValidator)),
+    // How the user's public lists were found: read off their lists page in-app, none there,
+    // or the page was blocked and the user has to paste list links.
+    listsDiscovery: v.optional(
+      v.union(v.literal('found'), v.literal('none'), v.literal('blocked'))
+    ),
+    // Running tally for the current run, promoted to lastRun when it finishes.
+    tally: v.optional(imdbTallyValidator),
+    lastRun: v.optional(imdbTallyValidator),
     createdAt: v.number()
   }).index('by_userId', ['userId']),
 

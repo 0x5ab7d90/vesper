@@ -60,8 +60,9 @@ interface TraktIds {
   tmdb?: number
 }
 
-// 1–10 (Trakt) → 1–5 (Vesper), rounded and clamped.
-function traktToVesperScore(rating: number): number {
+// 1–10 (Trakt, IMDb) → 1–5 (Vesper), rounded and clamped. One rule for every ten-point
+// source, so a 7 means the same thing wherever it came from.
+export function tenToFive(rating: number): number {
   return Math.min(5, Math.max(1, Math.round(rating / 2)))
 }
 
@@ -421,7 +422,7 @@ async function reconcileRatings(ctx: ActionCtx, userId: Id<'users'>, token: stri
       pull.push({
         mediaType,
         tmdbId,
-        score: traktToVesperScore(row.rating),
+        score: tenToFive(row.rating),
         updatedAt: ratedAt,
         title: node?.title ?? ''
       })

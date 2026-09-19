@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
-import { internalAction, internalMutation } from './_generated/server'
+import { parseProfileId } from './imdb'
+import { internalAction, internalMutation, internalQuery } from './_generated/server'
 import { presence } from './presence'
 import { showcaseItemValidator } from './schema'
 
@@ -283,5 +284,195 @@ export const recountWatched = internalMutation({
       lastItemAddedAt: latest || undefined
     })
     return { itemCount: items.length }
+  }
+})
+
+// Start an IMDb Import for a dev user without going through the UI.
+//   npx convex run devSeed:connectImdb '{"username":"sicem","link":"https://www.imdb.com/user/p.xxx"}'
+export const connectImdb = internalMutation({
+  args: { username: v.string(), link: v.string() },
+  handler: async (ctx, { username, link }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const profileId = parseProfileId(link)
+    if (!profileId) throw new Error('invalid-link')
+    const existing = await ctx.db
+      .query('imdbAccounts')
+      .withIndex('by_userId', (q) => q.eq('userId', profile.userId))
+      .unique()
+    const runId = crypto.randomUUID()
+    const fields = {
+      link,
+      imdbUserId: profileId.startsWith('ur') ? profileId : undefined,
+      status: 'running' as const,
+      runId,
+      progress: undefined,
+      error: undefined,
+      tally: { ratings: 0, watchlist: 0, lists: 0, unmatched: [] }
+    }
+    if (existing) await ctx.db.patch(existing._id, fields)
+    else
+      await ctx.db.insert('imdbAccounts', {
+        userId: profile.userId,
+        ...fields,
+        createdAt: Date.now()
+      })
+    await ctx.scheduler.runAfter(0, internal.imdbImport.start, {
+      userId: profile.userId,
+      runId,
+      profileId,
+      scope: 'all'
+    })
+    return { userId: profile.userId, runId }
+  }
+})
+
+export const imdbStatus = internalQuery({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) return null
+    const account = await ctx.db
+      .query('imdbAccounts')
+      .withIndex('by_userId', (q) => q.eq('userId', profile.userId))
+      .unique()
+    if (!account) return null
+    const { tally, lastRun, ...rest } = account
+    return {
+      ...rest,
+      tally: tally ? { ...tally, unmatched: tally.unmatched.length } : undefined,
+      lastRun: lastRun
+        ? {
+            ...lastRun,
+            unmatchedCount: lastRun.unmatched.length,
+            unmatched: lastRun.unmatched.slice(0, 15)
+          }
+        : undefined
+    }
+  }
+})
+
+// Queue public lists for a dev user's IMDb Import, as the app does after reading the lists page.
+//   npx convex run devSeed:addImdbLists '{"username":"sicem","imdbListIds":["ls055592025"]}'
+export const addImdbLists = internalMutation({
+  args: { username: v.string(), imdbListIds: v.array(v.string()) },
+  handler: async (ctx, { username, imdbListIds }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const account = await ctx.db
+      .query('imdbAccounts')
+      .withIndex('by_userId', (q) => q.eq('userId', profile.userId))
+      .unique()
+    if (!account) throw new Error('not-connected')
+    const known = new Set((account.lists ?? []).map((l) => l.imdbListId))
+    const lists = (account.lists ?? []).concat(
+      imdbListIds
+        .filter((id) => !known.has(id))
+        .map((imdbListId) => ({ imdbListId, name: '', markWatched: false }))
+    )
+    const profileId = parseProfileId(account.link)
+    if (!profileId) throw new Error('invalid-link')
+    const runId = crypto.randomUUID()
+    await ctx.db.patch(account._id, {
+      lists,
+      listsDiscovery: 'found',
+      status: 'running',
+      runId,
+      progress: undefined,
+      error: undefined,
+      tally: { ratings: 0, watchlist: 0, lists: 0, unmatched: [] }
+    })
+    await ctx.scheduler.runAfter(0, internal.imdbImport.start, {
+      userId: profile.userId,
+      runId,
+      profileId,
+      scope: 'lists'
+    })
+    return { runId, lists: lists.length }
+  }
+})
+
+// Wipe a dev user's ratings and Watched list so an import can be re-tested from zero.
+//   npx convex run devSeed:clearRatingsAndWatched '{"username":"0x5ab7d90"}'
+export const clearRatingsAndWatched = internalMutation({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const ratings = await ctx.db
+      .query('ratings')
+      .withIndex('by_userId', (q) => q.eq('userId', profile.userId))
+      .collect()
+    for (const r of ratings) await ctx.db.delete(r._id)
+    const watched = await ctx.db
+      .query('lists')
+      .withIndex('by_userId_and_kind', (q) => q.eq('userId', profile.userId).eq('kind', 'watched'))
+      .unique()
+    let items = 0
+    if (watched) {
+      const rows = await ctx.db
+        .query('listItems')
+        .withIndex('by_listId', (q) => q.eq('listId', watched._id))
+        .collect()
+      for (const row of rows) await ctx.db.delete(row._id)
+      items = rows.length
+      await ctx.db.patch(watched._id, { itemCount: 0, lastItemAddedAt: undefined })
+    }
+    return { ratings: ratings.length, watched: items }
+  }
+})
+
+// Delete a dev user's custom lists (items, pins and order rows included). Favorites and
+// Watched are untouched; use clearRatingsAndWatched for those.
+//   npx convex run devSeed:clearCustomLists '{"username":"0x5ab7d90"}'
+export const clearCustomLists = internalMutation({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const lists = await ctx.db
+      .query('lists')
+      .withIndex('by_userId_and_kind', (q) => q.eq('userId', profile.userId).eq('kind', 'custom'))
+      .collect()
+    let items = 0
+    for (const list of lists) {
+      const rows = await ctx.db
+        .query('listItems')
+        .withIndex('by_listId', (q) => q.eq('listId', list._id))
+        .collect()
+      for (const row of rows) await ctx.db.delete(row._id)
+      items += rows.length
+      const pin = await ctx.db
+        .query('listPins')
+        .withIndex('by_userId_and_listId', (q) =>
+          q.eq('userId', profile.userId).eq('listId', list._id)
+        )
+        .unique()
+      if (pin) await ctx.db.delete(pin._id)
+      const order = await ctx.db
+        .query('listOrder')
+        .withIndex('by_userId_and_listId', (q) =>
+          q.eq('userId', profile.userId).eq('listId', list._id)
+        )
+        .unique()
+      if (order) await ctx.db.delete(order._id)
+      await ctx.db.delete(list._id)
+    }
+    return { lists: lists.length, items }
   }
 })

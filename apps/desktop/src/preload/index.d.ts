@@ -76,6 +76,13 @@ export interface VesperApi {
   fights: {
     kalshiGet: (path: string) => Promise<unknown>
   }
+  imdb: {
+    /**
+     * The `ls…` ids on a user's public IMDb lists page, read in a hidden window because IMDb's
+     * API won't enumerate them. `null` when IMDb blocked the page; `[]` when it has none.
+     */
+    discoverLists: (imdbUserId: string) => Promise<string[] | null>
+  }
   web: {
     /**
      * Every HLS stream the web source API carries for a title, playable through the local

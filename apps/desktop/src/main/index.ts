@@ -28,6 +28,7 @@ import { registerEmbedStreams, stopEmbedProxy } from './embed-stream'
 import { registerKalshi } from './kalshi'
 import { registerWebSources } from './web-sources'
 import { registerPower } from './power'
+import { registerImdbLists } from './imdb-lists'
 
 app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport')
 
@@ -479,6 +480,7 @@ app.whenReady().then(() => {
   registerKalshi()
   registerWebSources()
   registerPower()
+  registerImdbLists()
 
   ipcMain.handle(
     'subtitles:pickFile',

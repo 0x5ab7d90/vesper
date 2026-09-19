@@ -71,6 +71,10 @@ const api = {
   fights: {
     kalshiGet: (path: string) => ipcRenderer.invoke('fights:kalshiGet', path) as Promise<unknown>
   },
+  imdb: {
+    discoverLists: (imdbUserId: string) =>
+      ipcRenderer.invoke('imdb:discoverLists', imdbUserId) as Promise<string[] | null>
+  },
   web: {
     // Rows arrive server by server as chunk events tagged with this call's id;
     // the invoke resolves with the complete list once every server has answered.
