@@ -30,6 +30,9 @@ type ProgressBarProps = React.HTMLAttributes<HTMLDivElement> &
      * fill with a lit top edge, sized for a list row. Ignores `tone` and `size`.
      */
     variant?: 'flat' | 'interior'
+    /** Interior only: rotate the fill's hue in degrees, so several bars side by side can each
+     *  take a different colour while sharing one shader. */
+    hueRotate?: number
     ref?: React.Ref<HTMLDivElement>
   }
 
@@ -39,6 +42,7 @@ export function ProgressBar({
   size,
   value,
   variant = 'flat',
+  hueRotate,
   ref,
   ...props
 }: ProgressBarProps): React.JSX.Element {
@@ -51,7 +55,16 @@ export function ProgressBar({
   }
 
   if (variant === 'interior') {
-    return <InteriorBar ref={ref} value={clamped} className={className} {...aria} {...props} />
+    return (
+      <InteriorBar
+        ref={ref}
+        value={clamped}
+        hueRotate={hueRotate}
+        className={className}
+        {...aria}
+        {...props}
+      />
+    )
   }
 
   return (
@@ -63,11 +76,13 @@ export function ProgressBar({
 
 function InteriorBar({
   value,
+  hueRotate = 0,
   className,
   ref,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
   value: number
+  hueRotate?: number
   ref?: React.Ref<HTMLDivElement>
 }): React.JSX.Element {
   const reduced = useReducedMotion()
@@ -90,6 +105,8 @@ function InteriorBar({
           initial={false}
           animate={{ clipPath: clip }}
           transition={reduced ? INSTANT : FILL}
+          // Rotating here tints the shader and its violet fallback alike.
+          {...(hueRotate ? { style: { filter: `hue-rotate(${hueRotate}deg)` } } : {})}
         >
           <ShaderFill bleed={28} timeScale={3} />
           <span
