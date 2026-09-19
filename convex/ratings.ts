@@ -35,13 +35,16 @@ async function getOrCreateWatchedList(
 }
 
 // Returns true when the watched row exists but has no poster (caller may backfill one).
-async function ensureWatchedItem(
+export async function ensureWatchedItem(
   ctx: MutationCtx,
   userId: Id<'users'>,
   mediaType: 'movie' | 'tv',
   tmdbId: number,
   title: string,
-  posterPath: string | undefined
+  posterPath: string | undefined,
+  // When the source knows when the title was seen (a rating date, a list entry date), the
+  // watched row takes it, so month-by-month stats stay honest for imported history.
+  addedAt?: number
 ): Promise<boolean> {
   const list = await getOrCreateWatchedList(ctx, userId)
   const dupe = await ctx.db
@@ -50,14 +53,17 @@ async function ensureWatchedItem(
       q.eq('listId', list._id).eq('mediaType', mediaType).eq('tmdbId', tmdbId)
     )
     .unique()
-  if (dupe) return !dupe.posterPath
+  if (dupe) {
+    if (addedAt !== undefined && addedAt < dupe.addedAt) await ctx.db.patch(dupe._id, { addedAt })
+    return !dupe.posterPath
+  }
   const now = Date.now()
   await ctx.db.insert('listItems', {
     listId: list._id,
     mediaType,
     tmdbId,
     addedBy: userId,
-    addedAt: now,
+    addedAt: addedAt ?? now,
     title,
     posterPath
   })

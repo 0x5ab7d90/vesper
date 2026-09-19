@@ -17,6 +17,8 @@ import type * as fanart from "../fanart.js";
 import type * as feedback from "../feedback.js";
 import type * as friendships from "../friendships.js";
 import type * as http from "../http.js";
+import type * as imdb from "../imdb.js";
+import type * as imdbImport from "../imdbImport.js";
 import type * as lists from "../lists.js";
 import type * as omdb from "../omdb.js";
 import type * as playback from "../playback.js";
@@ -48,6 +50,8 @@ declare const fullApi: ApiFromModules<{
   feedback: typeof feedback;
   friendships: typeof friendships;
   http: typeof http;
+  imdb: typeof imdb;
+  imdbImport: typeof imdbImport;
   lists: typeof lists;
   omdb: typeof omdb;
   playback: typeof playback;
