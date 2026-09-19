@@ -476,3 +476,22 @@ export const clearCustomLists = internalMutation({
     return { lists: lists.length, items }
   }
 })
+
+// Grant (or revoke) a hand-given badge. Works against prod with --prod.
+//   npx convex run devSeed:grantBadge '{"username":"0x5ab7d90","badge":"dev"}'
+export const grantBadge = internalMutation({
+  args: { username: v.string(), badge: v.string(), revoke: v.optional(v.boolean()) },
+  handler: async (ctx, { username, badge, revoke }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const current = new Set(profile.badges ?? [])
+    if (revoke) current.delete(badge)
+    else current.add(badge)
+    const badges = [...current]
+    await ctx.db.patch(profile._id, { badges })
+    return { username, badges }
+  }
+})

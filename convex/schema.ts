@@ -53,6 +53,8 @@ export default defineSchema({
     defaultListVisibility: v.optional(v.union(v.literal('private'), v.literal('public'))),
     // Four hand-picked titles shown on the profile card, in slot order; null keeps a gap.
     showcase: v.optional(v.array(v.union(v.null(), showcaseItemValidator))),
+    // Badges granted by hand ("dev"). Earned badges are worked out from the profile instead.
+    badges: v.optional(v.array(v.string())),
     createdAt: v.number()
   })
     .index('by_userId', ['userId'])
