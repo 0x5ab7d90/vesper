@@ -10,12 +10,14 @@ import { api } from '@convex/_generated/api'
 export type NowPlayingData = FunctionReturnType<typeof api.playback.nowPlayingByUsername>
 type Now = NonNullable<NowPlayingData>
 
+/** "S03E07 · One Minute": the code, then the episode's name when we have it. */
 function episodeText(season?: number, episode?: number, label?: string): string | null {
-  if (label) return label
-  if (season !== undefined && episode !== undefined) {
-    return `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`
-  }
-  return null
+  const code =
+    season !== undefined && episode !== undefined
+      ? `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`
+      : null
+  if (code && label) return `${code} · ${label}`
+  return code ?? label ?? null
 }
 
 /** h:mm:ss past an hour, m:ss under it; both sides of the readout use the same shape. */
@@ -73,10 +75,10 @@ function NowPlayingCard({ now }: { now: Now }): React.JSX.Element {
         style={{ backgroundImage: `url(${tmdbImage(now.posterPath, 'w154') ?? ''})` }}
       />
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="flex min-w-0 items-baseline gap-1.5">
+        <span className="flex min-w-0 flex-col">
           <span className="truncate text-[13px] leading-4 font-medium text-text">{now.title}</span>
           {episode ? (
-            <span className="shrink-0 text-[11px] leading-4 font-medium text-text-muted">
+            <span className="truncate text-[11px] leading-4 font-medium text-text-muted">
               {episode}
             </span>
           ) : null}
