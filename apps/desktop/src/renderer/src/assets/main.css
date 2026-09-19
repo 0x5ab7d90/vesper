@@ -64,6 +64,13 @@
      as a tint (dither fields, brand moments), never as a control colour. */
   --color-mascot: #7a3fe4;
 
+  /* shadcn-style aliases read by the vendored dither-kit charts (components/dither-kit);
+     they resolve onto the tokens above rather than introducing new neutrals. */
+  --color-foreground: var(--color-text);
+  --color-muted-foreground: var(--color-text-tertiary);
+  --color-popover: var(--color-surface-2);
+  --color-popover-foreground: var(--color-text);
+
   /* One base radius, multiplied — never a bespoke radius on a one-off element. */
   --radius-base: 10px;
   --radius-xs: calc(var(--radius-base) * 0.6);
@@ -230,6 +237,40 @@ svg {
   --icon-swap-blur: 2px;
   --icon-swap-start-scale: 0.25;
   --icon-swap-ease: ease-in-out;
+}
+
+/* Export button: the check draws itself as the camera crossfades out. The dash length is the
+   checkmark-1 path's measured length (24.6) rounded up. */
+.t-icon-swap[data-state='b'] .t-icon[data-icon='b'] path {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  animation: t-check-draw 350ms cubic-bezier(0.22, 1, 0.36, 1) 80ms forwards;
+}
+@keyframes t-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-icon-swap[data-state='b'] .t-icon[data-icon='b'] path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+/* Third slot for the export button's spinner; same rules as a and b. */
+.t-icon-swap[data-state='c'] .t-icon[data-icon='c'] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.t-icon-swap[data-state='c'] .t-icon[data-icon='a'],
+.t-icon-swap[data-state='c'] .t-icon[data-icon='b'],
+.t-icon-swap[data-state='a'] .t-icon[data-icon='c'],
+.t-icon-swap[data-state='b'] .t-icon[data-icon='c'] {
+  opacity: 0;
+  filter: blur(var(--icon-swap-blur));
+  transform: scale(var(--icon-swap-start-scale));
 }
 
 .t-icon-swap {

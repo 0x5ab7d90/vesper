@@ -4,6 +4,7 @@ import { mediaTypeValidator } from './schema'
 import { internal } from './_generated/api'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import type { Doc } from './_generated/dataModel'
+import { presence } from './presence'
 
 const COMPLETE_THRESHOLD = 0.95
 
@@ -198,6 +199,73 @@ export const recentlyWatchedByUsername = query({
       if (out.length >= (limit ?? 20)) break
     }
     return out
+  }
+})
+
+// Same windows the friends sidebar uses to call someone watching or paused.
+const WATCHING_FRESHNESS_MS = 60_000
+const PAUSED_FRESHNESS_MS = 5 * 60_000
+
+/** What a user is watching or paused on right now, or null; respects the same privacy
+ *  settings as recentlyWatchedByUsername plus hidePresence, since this is live. */
+export const nowPlayingByUsername = query({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) return null
+    if (profile.hideActivity || profile.hidePresence) return null
+    const visibility = profile.visibility ?? 'public'
+    if (visibility === 'hidden') return null
+    const me = await getAuthUserId(ctx)
+    if (visibility === 'friends' && me !== profile.userId) {
+      if (me === null) return null
+      const { userIdA, userIdB } =
+        me < profile.userId
+          ? { userIdA: me, userIdB: profile.userId }
+          : { userIdA: profile.userId, userIdB: me }
+      const row = await ctx.db
+        .query('friendships')
+        .withIndex('by_userIdA_and_userIdB', (q) => q.eq('userIdA', userIdA).eq('userIdB', userIdB))
+        .unique()
+      if (!row || row.status !== 'accepted') return null
+    }
+
+    const latest = await ctx.db
+      .query('playbackProgress')
+      .withIndex('by_userId_and_updatedAt', (q) => q.eq('userId', profile.userId))
+      .order('desc')
+      .take(1)
+    const playback = latest[0]
+    if (!playback || playback.tmdbId === undefined) return null
+
+    const age = Date.now() - playback.updatedAt
+    const status =
+      playback.state === 'playing' && age < WATCHING_FRESHNESS_MS
+        ? 'watching'
+        : playback.state === 'paused' && age < PAUSED_FRESHNESS_MS
+          ? 'paused'
+          : null
+    if (!status) return null
+
+    const online = await presence.listRoom(ctx, 'vesper', true, 200)
+    if (!online.some((p) => p.userId === profile.userId)) return null
+
+    return {
+      status,
+      tmdbId: playback.tmdbId,
+      mediaType: playback.mediaType,
+      title: playback.title ?? playback.imdbId,
+      posterPath: playback.posterPath,
+      season: playback.season,
+      episode: playback.episode,
+      episodeLabel: playback.episodeLabel,
+      positionSec: playback.positionSec,
+      durationSec: playback.durationSec,
+      updatedAt: playback.updatedAt
+    }
   }
 })
 

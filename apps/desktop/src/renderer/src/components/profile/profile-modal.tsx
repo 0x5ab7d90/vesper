@@ -12,19 +12,24 @@ import { SquircleSurface, squircleStyle } from '@renderer/components/ui/squircle
 import { ListCover, type ListKind } from '@renderer/components/library/list-cover'
 import { CloseIcon, MenuDotsIcon, PlusIcon } from '@renderer/components/icons'
 import { DitherCorner } from '@renderer/components/brand/dither-corner'
+import { NowPlaying, type NowPlayingData } from '@renderer/components/profile/now-playing'
+import { Showcase } from '@renderer/components/profile/showcase'
+import { StatsTab } from '@renderer/components/profile/stats-tab'
 import { BANNER_PALETTES } from '@renderer/lib/banner-palettes'
 import { closeProfile, useProfileModalUsername } from '@renderer/lib/profile-modal'
 import { tmdbImage } from '@renderer/lib/tmdb'
 import { api } from '@convex/_generated/api'
 import type { Doc, Id } from '@convex/_generated/dataModel'
+import type { FunctionReturnType } from 'convex/server'
 
 const POP = { type: 'spring', stiffness: 400, damping: 26 } as const
 
-type Tab = 'watching' | 'lists'
+type Tab = 'recents' | 'lists' | 'stats'
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'watching', label: 'Watching' },
-  { value: 'lists', label: 'Lists' }
+  { value: 'recents', label: 'Recents' },
+  { value: 'lists', label: 'Lists' },
+  { value: 'stats', label: 'Stats' }
 ]
 
 /** Mounted once in the authenticated layout; opens for whichever username the store holds. */
@@ -36,7 +41,7 @@ export function ProfileModal(): React.JSX.Element {
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
         <Dialog.Popup
           aria-label={username ? `@${username}` : 'Profile'}
-          className="fixed top-1/2 left-1/2 z-50 w-[min(880px,92vw)] -translate-x-1/2 -translate-y-1/2 outline-none"
+          className="fixed top-1/2 left-1/2 z-50 w-[min(1300px,96vw)] -translate-x-1/2 -translate-y-1/2 outline-none"
         >
           {username ? <ProfileBody key={username} username={username} /> : null}
         </Dialog.Popup>
@@ -47,27 +52,40 @@ export function ProfileModal(): React.JSX.Element {
 
 function ProfileBody({ username }: { username: string }): React.JSX.Element {
   const profile = useQuery(api.profiles.byUsername, { username })
+  // Fetched here rather than inside the card so the skeleton holds until both have landed;
+  // otherwise the live block arrives a beat late and shoves everything under it down.
+  const now = useQuery(api.playback.nowPlayingByUsername, { username })
   const me = useQuery(api.profiles.me)
-  const [tab, setTab] = useState<Tab>('watching')
+  const [tab, setTab] = useState<Tab>('recents')
   const isMe = me?.profile?.username === username
+  // Same reason: the friend buttons live at the card's foot and would otherwise appear late.
+  const friendState = useQuery(
+    api.friendships.stateWith,
+    profile && me !== undefined && !isMe ? { otherUserId: profile.userId } : 'skip'
+  )
+  const identityLoading =
+    profile === undefined ||
+    now === undefined ||
+    me === undefined ||
+    (profile !== null && !isMe && friendState === undefined)
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={POP}
-      className="relative flex h-[min(600px,88vh)] gap-1.5 border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
+      className="relative flex h-[min(1052px,94vh)] gap-1.5 border border-white/[0.06] bg-surface-2 p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]"
       style={squircleStyle('frame')}
     >
-      {/* Start the field past the 300px identity card and the tab switcher beside it. */}
-      <DitherCorner width="calc(100% - 560px)" fadeInTo={40} />
-      <SquircleSurface variant="inset" className="relative w-[300px] shrink-0 overflow-hidden">
-        {profile === undefined ? (
+      {/* Start the field past the 320px identity card and the tab switcher beside it. */}
+      <DitherCorner width="calc(100% - 580px)" fadeInTo={40} />
+      <SquircleSurface variant="inset" className="relative w-[320px] shrink-0 overflow-hidden">
+        {identityLoading ? (
           <IdentitySkeleton />
         ) : profile === null ? (
           <NotFound username={username} />
         ) : (
-          <Identity profile={profile} isMe={isMe} />
+          <Identity profile={profile} now={now} isMe={isMe} friendState={friendState ?? null} />
         )}
       </SquircleSurface>
 
@@ -85,10 +103,12 @@ function ProfileBody({ username }: { username: string }): React.JSX.Element {
         </div>
         <SquircleSurface variant="inset" className="min-h-0 flex-1 overflow-hidden">
           <div className="scroll-hide h-full overflow-y-auto p-3">
-            {profile === null ? null : tab === 'watching' ? (
-              <WatchingGrid username={username} />
-            ) : (
+            {!profile ? null : tab === 'recents' ? (
+              <RecentsGrid username={username} />
+            ) : tab === 'lists' ? (
               <ListsGrid username={username} />
+            ) : (
+              <StatsTab profile={profile} />
             )}
           </div>
         </SquircleSurface>
@@ -127,17 +147,23 @@ function memberSince(createdAt: number): string {
   return new Date(createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
+type FriendState = NonNullable<FunctionReturnType<typeof api.friendships.stateWith>>
+
 function Identity({
   profile,
-  isMe
+  now,
+  isMe,
+  friendState
 }: {
   profile: Doc<'profiles'>
+  now: NowPlayingData
   isMe: boolean
+  friendState: FriendState | null
 }): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <Banner src={profile.bannerUrl} seed={profile.username} />
-      <div className="-mt-12 flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="scroll-hide -mt-12 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {/* The ring is the card's own surface, and the disc behind the image is opaque so a
             transparent avatar never shows the banner through itself. */}
         <span className="inline-flex size-[96px] shrink-0 rounded-full bg-surface p-1.5">
@@ -166,9 +192,11 @@ function Identity({
             {memberSince(profile.createdAt)}
           </span>
         </div>
-        {!isMe ? (
+        <NowPlaying now={now} />
+        <Showcase profile={profile} isMe={isMe} />
+        {!isMe && friendState ? (
           <div className="mt-auto">
-            <FriendAction otherUserId={profile.userId} />
+            <FriendAction otherUserId={profile.userId} state={friendState} />
           </div>
         ) : null}
       </div>
@@ -180,7 +208,7 @@ function IdentitySkeleton(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <Skeleton className="h-[120px] w-full rounded-none" />
-      <div className="-mt-12 flex flex-col gap-4 px-4 pb-4">
+      <div className="-mt-12 flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4">
         <span className="inline-flex size-[96px] rounded-full bg-surface p-1.5">
           <Skeleton className="size-full rounded-full" />
         </span>
@@ -189,6 +217,22 @@ function IdentitySkeleton(): React.JSX.Element {
           <Skeleton className="h-3 w-20" />
         </div>
         <Skeleton className="h-4 w-48" />
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-3 w-14" />
+          <div className="grid grid-cols-4 gap-2">
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="aspect-[2/3] w-full rounded-[10px]" />
+            ))}
+          </div>
+        </div>
+        <div className="mt-auto flex items-center gap-2">
+          <Skeleton className="h-9 flex-1 rounded-[14px]" />
+          <Skeleton className="size-9 rounded-[14px]" />
+        </div>
       </div>
     </div>
   )
@@ -205,8 +249,13 @@ function NotFound({ username }: { username: string }): React.JSX.Element {
   )
 }
 
-function FriendAction({ otherUserId }: { otherUserId: Id<'users'> }): React.JSX.Element | null {
-  const state = useQuery(api.friendships.stateWith, { otherUserId })
+function FriendAction({
+  otherUserId,
+  state
+}: {
+  otherUserId: Id<'users'>
+  state: FriendState
+}): React.JSX.Element | null {
   const sendRequest = useMutation(api.friendships.sendRequest)
   const cancelRequest = useMutation(api.friendships.cancelRequest)
   const unfriend = useMutation(api.friendships.unfriend)
@@ -214,7 +263,7 @@ function FriendAction({ otherUserId }: { otherUserId: Id<'users'> }): React.JSX.
   const acceptRequest = useMutation(api.friendships.acceptRequest)
   const declineRequest = useMutation(api.friendships.declineRequest)
 
-  if (state === undefined || state.state === 'blocked_by_them') return null
+  if (state.state === 'blocked_by_them') return null
 
   let primary: React.ReactNode = null
   switch (state.state) {
@@ -326,7 +375,7 @@ function EmptyNote({ children }: { children: React.ReactNode }): React.JSX.Eleme
   )
 }
 
-function WatchingGrid({ username }: { username: string }): React.JSX.Element {
+function RecentsGrid({ username }: { username: string }): React.JSX.Element {
   const items = useQuery(api.playback.recentlyWatchedByUsername, { username, limit: 30 })
   const navigate = useNavigate()
 

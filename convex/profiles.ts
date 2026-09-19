@@ -10,6 +10,7 @@ import {
   type QueryCtx
 } from './_generated/server'
 import type { Id } from './_generated/dataModel'
+import { showcaseItemValidator } from './schema'
 
 async function areFriends(ctx: QueryCtx, a: Id<'users'>, b: Id<'users'>): Promise<boolean> {
   const { userIdA, userIdB } = a < b ? { userIdA: a, userIdB: b } : { userIdA: b, userIdB: a }
@@ -317,6 +318,25 @@ export const updateBio = mutation({
     const trimmed = bio.trim()
     if (trimmed.length > BIO_MAX) throw new Error('Bio too long')
     await ctx.db.patch(profile._id, { bio: trimmed.length === 0 ? undefined : trimmed })
+  }
+})
+
+const SHOWCASE_SLOTS = 4
+
+export const setShowcaseSlot = mutation({
+  args: { index: v.number(), item: v.union(v.null(), showcaseItemValidator) },
+  handler: async (ctx, { index, item }) => {
+    if (!Number.isInteger(index) || index < 0 || index >= SHOWCASE_SLOTS) {
+      throw new Error('Invalid showcase slot')
+    }
+    const profile = await requireProfile(ctx)
+    const next: Array<typeof item> = Array.from(
+      { length: SHOWCASE_SLOTS },
+      (_, i) => profile.showcase?.[i] ?? null
+    )
+    next[index] = item
+    const empty = next.every((slot) => slot === null)
+    await ctx.db.patch(profile._id, { showcase: empty ? undefined : next })
   }
 })
 
