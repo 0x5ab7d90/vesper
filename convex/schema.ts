@@ -4,6 +4,13 @@ import { v } from 'convex/values'
 
 export const mediaTypeValidator = v.union(v.literal('movie'), v.literal('tv'))
 
+export const showcaseItemValidator = v.object({
+  tmdbId: v.number(),
+  mediaType: mediaTypeValidator,
+  title: v.string(),
+  posterPath: v.optional(v.string())
+})
+
 export default defineSchema({
   ...authTables,
   profiles: defineTable({
@@ -18,6 +25,8 @@ export default defineSchema({
     hidePresence: v.optional(v.boolean()),
     hideActivity: v.optional(v.boolean()),
     defaultListVisibility: v.optional(v.union(v.literal('private'), v.literal('public'))),
+    // Four hand-picked titles shown on the profile card, in slot order; null keeps a gap.
+    showcase: v.optional(v.array(v.union(v.null(), showcaseItemValidator))),
     createdAt: v.number()
   })
     .index('by_userId', ['userId'])
@@ -159,6 +168,30 @@ export default defineSchema({
   })
     .index('by_userId', ['userId'])
     .index('by_online', ['online']),
+
+  // TMDB facts about a title, cached so profile stats do not refetch the same movie for
+  // every user who watched it. A row with fetchedAt and no year is a title TMDB no longer
+  // knows; it is kept so the job stops asking.
+  titleMeta: defineTable({
+    mediaType: mediaTypeValidator,
+    tmdbId: v.number(),
+    genres: v.array(v.string()),
+    runtimeMin: v.optional(v.number()),
+    year: v.optional(v.number()),
+    originalLanguage: v.optional(v.string()),
+    voteAverage: v.optional(v.number()),
+    episodes: v.optional(v.number()),
+    fetchedAt: v.number()
+  }).index('by_media', ['mediaType', 'tmdbId']),
+
+  // A user's computed watch stats, refreshed on demand when someone opens their Stats tab.
+  profileStats: defineTable({
+    userId: v.id('users'),
+    computedAt: v.optional(v.number()),
+    computingAt: v.optional(v.number()),
+    itemCount: v.number(),
+    stats: v.optional(v.any())
+  }).index('by_userId', ['userId']),
 
   omdbRatings: defineTable({
     imdbId: v.string(),

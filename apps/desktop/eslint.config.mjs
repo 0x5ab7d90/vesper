@@ -28,5 +28,15 @@ export default defineConfig(
       ...eslintPluginReactRefresh.configs.vite.rules
     }
   },
+  {
+    // Vendored from dither-kit (tripwire.sh/dither-kit) and kept close to upstream so it can be
+    // diffed against the registry; house rules about return types and refresh boundaries are
+    // relaxed there only.
+    files: ['src/renderer/src/components/dither-kit/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      'react-refresh/only-export-components': 'off'
+    }
+  },
   eslintConfigPrettier
 )
