@@ -1,8 +1,9 @@
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Doc } from '@convex/_generated/dataModel'
-import { Tooltip } from '@renderer/components/ui/tooltip'
+import { SimpleTooltip } from '@renderer/components/ui/simple-tooltip'
+import { cn } from '@renderer/lib/cn'
 
 // Profile badges. Each one is a small piece of art with a name and a line of copy; they sit
 // after the handle and explain themselves on hover. Earned badges are worked out here from the
@@ -80,36 +81,29 @@ export function Badges({
   // The stats snapshot is what the Stats tab reads too; it's a cached row, so this is cheap.
   const data = useQuery(api.stats.forUsername, { username: profile.username })
   const badges = badgesFor(profile, data?.stats)
-  // One bubble for the whole strip, centred on it, naming whichever badge the pointer is on.
-  // Per-badge bubbles ran off the narrow identity column at either end.
-  const [hovered, setHovered] = useState<Badge | null>(null)
   if (badges.length === 0) return null
-  const shown = hovered ?? badges[0]!
   return (
-    <Tooltip
-      contentClassName="max-w-[176px] [&>span]:whitespace-normal"
-      label={
-        <span className="flex flex-col gap-0.5 text-left">
-          <span className="text-text">{shown.name}</span>
-          <span className="text-text-tertiary">{shown.blurb}</span>
-        </span>
-      }
-      className={className}
-    >
-      <span className="inline-flex shrink-0 items-center gap-1">
-        {badges.map((b) => (
+    <span className={cn('inline-flex shrink-0 items-center gap-1', className)}>
+      {badges.map((b) => (
+        <SimpleTooltip
+          key={b.id}
+          content={
+            <span className="flex flex-col gap-0.5">
+              <span className="text-text">{b.name}</span>
+              <span className="text-text-tertiary">{b.blurb}</span>
+            </span>
+          }
+        >
           <span
-            key={b.id}
             role="img"
             aria-label={`${b.name} badge: ${b.blurb}`}
-            onPointerEnter={() => setHovered(b)}
             className="inline-flex size-[15px] cursor-pointer items-center justify-center"
           >
             <b.Art className="size-full" />
           </span>
-        ))}
-      </span>
-    </Tooltip>
+        </SimpleTooltip>
+      ))}
+    </span>
   )
 }
 
