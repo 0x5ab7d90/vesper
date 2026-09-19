@@ -15,8 +15,9 @@ import { URL } from 'url'
 // requesting it themselves. A hidden window loads the embed, we catch the
 // playlist request it makes, and playback then flows through a local proxy
 // that attaches the headers the stream hosts demand — the renderer's hls.js
-// only ever talks to 127.0.0.1. The Referer is the embed's own origin, so one
-// resolver serves every host.
+// only ever talks to 127.0.0.1. Each proxied URL carries the header map its
+// host wants (a Referer for most, an Origin for some), so one proxy serves
+// every source site.
 
 const CHROME_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -30,17 +31,39 @@ let proxyServer: Server | null = null
 let proxyPort = 0
 let proxyToken = ''
 
-function upstreamHeaders(referer: string): Record<string, string> {
+/** Request headers a stream host demands, carried inside each proxied URL. */
+export type UpstreamHeaders = Record<string, string>
+
+function upstreamHeaders(headers: UpstreamHeaders): Record<string, string> {
   return {
-    Referer: referer,
     'Icy-MetaData': '1',
-    'User-Agent': CHROME_UA
+    'User-Agent': CHROME_UA,
+    ...headers
+  }
+}
+
+// The header map rides in the query as base64url JSON: opaque to hls.js,
+// round-trips any header name, and stays short for the usual one or two.
+function encodeHeaders(headers: UpstreamHeaders): string {
+  return Buffer.from(JSON.stringify(headers)).toString('base64url')
+}
+
+function decodeHeaders(raw: string | null): UpstreamHeaders {
+  if (!raw) return {}
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as unknown
+    if (!parsed || typeof parsed !== 'object') return {}
+    const out: UpstreamHeaders = {}
+    for (const [k, v] of Object.entries(parsed)) if (typeof v === 'string') out[k] = v
+    return out
+  } catch {
+    return {}
   }
 }
 
 function fetchUpstream(
   rawUrl: string,
-  referer: string,
+  headers: UpstreamHeaders,
   redirectsLeft = MAX_REDIRECTS
 ): Promise<IncomingMessage> {
   return new Promise((resolve, reject) => {
@@ -56,12 +79,12 @@ function fetchUpstream(
       return
     }
     const doRequest = target.protocol === 'https:' ? httpsRequest : httpRequest
-    const req = doRequest(target, { headers: upstreamHeaders(referer) }, (res) => {
+    const req = doRequest(target, { headers: upstreamHeaders(headers) }, (res) => {
       const status = res.statusCode ?? 0
       const location = res.headers.location
       if (status >= 300 && status < 400 && location && redirectsLeft > 0) {
         res.resume()
-        fetchUpstream(new URL(location, target).toString(), referer, redirectsLeft - 1).then(
+        fetchUpstream(new URL(location, target).toString(), headers, redirectsLeft - 1).then(
           resolve,
           reject
         )
@@ -75,8 +98,8 @@ function fetchUpstream(
   })
 }
 
-function proxyUrlFor(absUrl: string, referer: string, kind: 'playlist' | 'seg'): string {
-  const q = `t=${proxyToken}&r=${encodeURIComponent(referer)}&u=${encodeURIComponent(absUrl)}`
+function proxyUrlFor(absUrl: string, headers: UpstreamHeaders, kind: 'playlist' | 'seg'): string {
+  const q = `t=${proxyToken}&h=${encodeHeaders(headers)}&u=${encodeURIComponent(absUrl)}`
   return `http://127.0.0.1:${proxyPort}/${kind}?${q}`
 }
 
@@ -89,14 +112,17 @@ function isMasterPlaylist(text: string): boolean {
 // host the playlist names) carries the required headers. Tokenized proxies
 // don't put .m3u8 in their URLs, so a reference's kind comes from where it
 // sits: a master's bare lines are variant playlists, a media playlist's are
-// segments; attribute URIs (keys, init maps) are raw unless named outright.
-function rewritePlaylist(text: string, baseUrl: string, referer: string): string {
+// segments. Attribute URIs follow their tag: a rendition (EXT-X-MEDIA) or
+// I-frame stream is always a playlist; keys and init maps are raw unless
+// named outright.
+const PLAYLIST_TAG_RE = /^#EXT-X-(MEDIA|I-FRAME-STREAM-INF):/
+function rewritePlaylist(text: string, baseUrl: string, headers: UpstreamHeaders): string {
   const master = isMasterPlaylist(text)
-  const rewriteRef = (ref: string, attr: boolean): string => {
+  const rewriteRef = (ref: string, playlist: boolean): string => {
     try {
       const abs = new URL(ref, baseUrl).toString()
-      const kind = M3U8_RE.test(abs) || (master && !attr) ? 'playlist' : 'seg'
-      return proxyUrlFor(abs, referer, kind)
+      const kind = playlist || M3U8_RE.test(abs) ? 'playlist' : 'seg'
+      return proxyUrlFor(abs, headers, kind)
     } catch {
       return ref
     }
@@ -107,9 +133,13 @@ function rewritePlaylist(text: string, baseUrl: string, referer: string): string
       const trimmed = line.trim()
       if (!trimmed) return line
       if (trimmed.startsWith('#')) {
-        return line.replace(/URI="([^"]+)"/g, (_m, uri: string) => `URI="${rewriteRef(uri, true)}"`)
+        const playlist = PLAYLIST_TAG_RE.test(trimmed)
+        return line.replace(
+          /URI="([^"]+)"/g,
+          (_m, uri: string) => `URI="${rewriteRef(uri, playlist)}"`
+        )
       }
-      return rewriteRef(trimmed, false)
+      return rewriteRef(trimmed, master)
     })
     .join('\n')
 }
@@ -137,9 +167,9 @@ async function handleProxyRequest(req: IncomingMessage, res: ServerResponse): Pr
     return
   }
   const target = url.searchParams.get('u') ?? ''
-  const referer = url.searchParams.get('r') ?? ''
+  const headers = decodeHeaders(url.searchParams.get('h'))
   if (url.pathname === '/playlist') {
-    const upstream = await fetchUpstream(target, referer)
+    const upstream = await fetchUpstream(target, headers)
     if ((upstream.statusCode ?? 0) >= 400) {
       upstream.resume()
       res.writeHead(502, baseResponseHeaders()).end()
@@ -151,11 +181,24 @@ async function handleProxyRequest(req: IncomingMessage, res: ServerResponse): Pr
         ...baseResponseHeaders(),
         'content-type': 'application/vnd.apple.mpegurl'
       })
-      .end(rewritePlaylist(body, target, referer))
+      .end(rewritePlaylist(body, target, headers))
     return
   }
   if (url.pathname === '/seg') {
-    const upstream = await fetchUpstream(target, referer)
+    const upstream = await fetchUpstream(target, headers)
+    // A reference we took for a segment can still turn out to be a playlist
+    // (a proxy URL with nothing telling in it). The content type says so;
+    // rewrite it rather than pipe it, or its own references escape the proxy.
+    if (HLS_CONTENT_TYPE_RE.test(upstream.headers['content-type'] ?? '')) {
+      const body = await readBody(upstream)
+      res
+        .writeHead(200, {
+          ...baseResponseHeaders(),
+          'content-type': 'application/vnd.apple.mpegurl'
+        })
+        .end(rewritePlaylist(body, target, headers))
+      return
+    }
     res.writeHead(upstream.statusCode ?? 502, {
       ...baseResponseHeaders(),
       'content-type': upstream.headers['content-type'] ?? 'application/octet-stream'
@@ -264,20 +307,41 @@ export function registerEmbedStreams(): void {
     if (typeof embedUrl !== 'string' || !embedUrl.startsWith('https://')) {
       throw new Error('invalid embed url')
     }
-    const referer = `${new URL(embedUrl).origin}/`
+    const headers = { Referer: `${new URL(embedUrl).origin}/` }
     const run = embedQueue.then(() => interceptPlaylist(embedUrl))
     embedQueue = run.catch(() => undefined)
     const playlistUrl = await run
     await ensureProxy()
-    return proxyUrlFor(playlistUrl, referer, 'playlist')
+    return proxyUrlFor(playlistUrl, headers, 'playlist')
   })
+}
+
+// Whether a playlist answers at all, with the same headers playback will send.
+// Web sources list whatever their API hands out, and a host Cloudflare has
+// switched off still gets listed unless someone asks it first; the body is
+// dropped unread, so this costs one round trip and no bandwidth.
+export async function upstreamAnswers(
+  playlistUrl: string,
+  headers: UpstreamHeaders
+): Promise<boolean> {
+  try {
+    const res = await fetchUpstream(playlistUrl, headers)
+    res.destroy()
+    const status = res.statusCode ?? 0
+    return status >= 200 && status < 300
+  } catch {
+    return false
+  }
 }
 
 // A playlist whose URL is already known (web sources, ADR-0019) skips the
 // hidden window and only needs the header proxy in front of it.
-export async function proxiedPlaylistUrl(playlistUrl: string, referer: string): Promise<string> {
+export async function proxiedPlaylistUrl(
+  playlistUrl: string,
+  headers: UpstreamHeaders
+): Promise<string> {
   await ensureProxy()
-  return proxyUrlFor(playlistUrl, referer, 'playlist')
+  return proxyUrlFor(playlistUrl, headers, 'playlist')
 }
 
 export function stopEmbedProxy(): void {

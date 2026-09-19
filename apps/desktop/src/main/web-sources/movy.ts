@@ -1,39 +1,18 @@
-import { ipcMain } from 'electron'
-import { proxiedPlaylistUrl } from './embed-stream'
+import { proxiedPlaylistUrl, upstreamAnswers } from '../embed-stream'
+import type { WebSourceInput, WebSourceSite, WebStream } from './types'
 
-// Web sources: a stream API that hands out HLS playlists for a title on
-// request, no hidden browser needed (ADR-0019). One `seed` call keys a
+// Movy: a stream API that hands out HLS playlists for a title on request,
+// no hidden browser needed (ADR-0019). One `seed` call keys a
 // short-lived cipher; every provider's `sources` answer is that cipher over
 // a JSON body. The keystream below is a port of the site's own client, so if
 // the site rotates its scheme this file is what stops decrypting.
 
 const API = 'https://api.wecollege.net'
-const REFERER = 'https://www.movy.sx/'
+const HEADERS = { Referer: 'https://www.movy.sx/' }
 const SEED_TTL_FALLBACK_MS = 30_000
 // The list waits for the slowest server, so this bounds how long the picker's
 // section can sit on its skeleton. Healthy servers answer in well under a second.
 const PROVIDER_TIMEOUT_MS = 8_000
-
-export interface WebSourceInput {
-  title: string
-  mediaType: 'movie' | 'tv'
-  tmdbId: number
-  imdbId?: string
-  year?: number
-  season?: number
-  episode?: number
-}
-
-export interface WebStream {
-  id: string
-  server: string
-  /** Audio language as a subtitle-style code, for the flag tile. */
-  lang: string
-  /** "2160p", "1080p", "Auto", … as the provider labels it. */
-  quality: string
-  /** Playback URL through the local header proxy. */
-  url: string
-}
 
 interface Provider {
   slug: string
@@ -209,18 +188,27 @@ async function fetchProvider(
   const parsed = JSON.parse(decryptSources(await res.text(), seed, input.tmdbId)) as {
     sources?: RawSource[]
   }
-  const out: WebStream[] = []
+  const candidates: { url: string; quality: string }[] = []
   for (const s of parsed.sources ?? []) {
     if (typeof s.url !== 'string' || !s.url.startsWith('https://')) continue
     if (!isHls(s.url)) continue
     const quality = typeof s.quality === 'string' && s.quality ? s.quality : 'Auto'
     if (p.onlyQuality && quality !== p.onlyQuality) continue
+    candidates.push({ url: s.url, quality })
+  }
+  // The API lists playlists on hosts that may no longer answer (a CDN zone
+  // Cloudflare has switched off, say). Ask each one once, all at the same
+  // time, and list only the ones that do, so a dead row never reaches the picker.
+  const alive = await Promise.all(candidates.map((c) => upstreamAnswers(c.url, HEADERS)))
+  const out: WebStream[] = []
+  for (const [i, c] of candidates.entries()) {
+    if (!alive[i]) continue
     out.push({
-      id: `${p.slug}:${quality}:${out.length}`,
+      id: `movy:${p.slug}:${c.quality}:${out.length}`,
       server: p.name,
       lang: p.lang,
-      quality: p.onlyQuality ? 'Auto' : quality,
-      url: await proxiedPlaylistUrl(s.url, REFERER)
+      quality: p.onlyQuality ? 'Auto' : c.quality,
+      url: await proxiedPlaylistUrl(c.url, HEADERS)
     })
   }
   return out
@@ -229,7 +217,7 @@ async function fetchProvider(
 // Every provider is asked at once and each answer is handed over the moment
 // it lands, so the healthy servers (a few hundred milliseconds) never wait on
 // the dead ones (seconds, then an error). The resolved value is the whole list.
-export async function listWebStreams(
+async function listStreams(
   input: WebSourceInput,
   onChunk?: (rows: WebStream[]) => void
 ): Promise<WebStream[]> {
@@ -250,37 +238,4 @@ export async function listWebStreams(
   return out
 }
 
-function validInput(raw: unknown): WebSourceInput | null {
-  if (!raw || typeof raw !== 'object') return null
-  const r = raw as Record<string, unknown>
-  if (typeof r.title !== 'string' || !r.title) return null
-  if (r.mediaType !== 'movie' && r.mediaType !== 'tv') return null
-  if (typeof r.tmdbId !== 'number' || !Number.isInteger(r.tmdbId) || r.tmdbId <= 0) return null
-  const num = (v: unknown): number | undefined =>
-    typeof v === 'number' && Number.isFinite(v) ? v : undefined
-  return {
-    title: r.title,
-    mediaType: r.mediaType,
-    tmdbId: r.tmdbId,
-    imdbId: typeof r.imdbId === 'string' ? r.imdbId : undefined,
-    year: num(r.year),
-    season: num(r.season),
-    episode: num(r.episode)
-  }
-}
-
-export function registerWebSources(): void {
-  // Partial answers ride back as `web:streamsChunk` events tagged with the
-  // caller's request id; the invoke itself resolves with the full list.
-  ipcMain.handle(
-    'web:listStreams',
-    async (e, raw: unknown, requestId: unknown): Promise<WebStream[]> => {
-      const input = validInput(raw)
-      if (!input) throw new Error('invalid web source input')
-      const id = typeof requestId === 'string' ? requestId : null
-      return listWebStreams(input, (rows) => {
-        if (id && !e.sender.isDestroyed()) e.sender.send('web:streamsChunk', id, rows)
-      })
-    }
-  )
-}
+export const movy: WebSourceSite = { name: 'Movy', listStreams }
