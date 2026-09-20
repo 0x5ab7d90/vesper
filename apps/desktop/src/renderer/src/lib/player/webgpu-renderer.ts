@@ -46,6 +46,22 @@ struct VOut { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
 }
 `
 
+/**
+ * What can be drawn. The custom engine hands over decoded WebCodecs frames; the web player has
+ * a plain <video> feeding hls.js through MSE. WebGPU takes either as an external image, so the
+ * upscaling path is the same for both.
+ */
+export type RenderSource = VideoFrame | HTMLVideoElement
+
+function sourceSize(source: RenderSource): { width: number; height: number } {
+  return source instanceof HTMLVideoElement
+    ? { width: source.videoWidth, height: source.videoHeight }
+    : {
+        width: source.displayWidth || source.codedWidth,
+        height: source.displayHeight || source.codedHeight
+      }
+}
+
 interface Anime4kChain {
   key: string
   pipelines: Anime4KPipeline[]
@@ -110,11 +126,11 @@ export class WebGPURenderer {
     if (!preset) this.dropAnime4kChain()
   }
 
-  render(frame: VideoFrame): void {
-    if (this.a4kPreset && this.renderAnime4k(frame, this.a4kPreset)) return
+  render(source: RenderSource): void {
+    if (this.a4kPreset && this.renderAnime4k(source, this.a4kPreset)) return
     const { device, ctx, pipeline, sampler } = this
     if (!device || !ctx || !pipeline || !sampler) return
-    const ext = device.importExternalTexture({ source: frame })
+    const ext = device.importExternalTexture({ source })
     const bind = device.createBindGroup({
       layout: pipeline.getBindGroupLayout(0),
       entries: [
@@ -141,11 +157,11 @@ export class WebGPURenderer {
   }
 
   /** Returns false when the chain isn't ready yet — the caller falls back to passthrough. */
-  private renderAnime4k(frame: VideoFrame, preset: Anime4kPreset): boolean {
+  private renderAnime4k(source: RenderSource, preset: Anime4kPreset): boolean {
     const { device, ctx, blitPipeline, sampler } = this
     if (!device || !ctx || !blitPipeline || !sampler) return false
-    const w = frame.displayWidth || frame.codedWidth
-    const h = frame.displayHeight || frame.codedHeight
+    const { width: w, height: h } = sourceSize(source)
+    if (w <= 0 || h <= 0) return false
     const key = `${w}x${h}:${preset}`
     const chain = this.a4kChain
     if (!chain || chain.key !== key) {
@@ -154,7 +170,7 @@ export class WebGPURenderer {
     }
     try {
       device.queue.copyExternalImageToTexture(
-        { source: frame },
+        { source },
         // 'srgb' keeps the copied values identical to what the passthrough external-texture
         // path produces, so toggling Anime4K never shifts color.
         { texture: chain.input, colorSpace: 'srgb' },
