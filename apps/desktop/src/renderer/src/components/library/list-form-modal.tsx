@@ -11,6 +11,7 @@ import { IconButton } from '@renderer/components/ui/icon-button'
 import { AlertCircleIcon, CloseIcon, LockIcon } from '@renderer/components/icons'
 import { CropModal } from '@renderer/components/settings/crop-modal'
 import { DitherAvatar } from '@renderer/components/dither-kit/avatar'
+import { DitherCorner } from '@renderer/components/brand/dither-corner'
 import { Ring } from '@renderer/components/ui/spinner'
 import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, uploadListCover } from '@renderer/lib/image-upload'
 import { cn } from '@renderer/lib/cn'
@@ -65,6 +66,9 @@ export function ListFormModal({
           )}
         >
           <SquircleSurface variant="frame" className="p-1.5 shadow-[0_24px_64px_rgba(0,0,0,0.5)]">
+            {/* The frame is already relative and clipped to the squircle, so the field tucks
+                into its top-right corner the way it does on the feedback and stream sheets. */}
+            <DitherCorner />
             {open ? (
               <ModalBody mode={mode} list={list} onClose={() => onOpenChange(false)} />
             ) : null}
