@@ -10,6 +10,7 @@ import { Button } from '@renderer/components/ui/button'
 import { IconButton } from '@renderer/components/ui/icon-button'
 import { AlertCircleIcon, CloseIcon, LockIcon } from '@renderer/components/icons'
 import { CropModal } from '@renderer/components/settings/crop-modal'
+import { DitherAvatar } from '@renderer/components/dither-kit/avatar'
 import { Ring } from '@renderer/components/ui/spinner'
 import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, uploadListCover } from '@renderer/lib/image-upload'
 import { cn } from '@renderer/lib/cn'
@@ -157,6 +158,7 @@ function ModalBody({
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isSubmitting }
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -206,6 +208,7 @@ function ModalBody({
         <div className="flex gap-3">
           <CoverThumb
             previewUrl={coverPreviewUrl}
+            seed={watch('name').trim() || list?._id || 'list'}
             busy={coverBusy}
             onPick={() => fileInputRef.current?.click()}
             onRemove={handleRemoveCover}
@@ -285,13 +288,17 @@ function ModalBody({
   )
 }
 
+/** The cover the list will get if you leave it alone: the same generated mark the sidebar
+ *  draws, following the name as you type. Clicking swaps it for a picture of your own. */
 function CoverThumb({
   previewUrl,
+  seed,
   busy,
   onPick,
   onRemove
 }: {
   previewUrl: string | null
+  seed: string
   busy: boolean
   onPick: () => void
   onRemove: () => void | Promise<void>
@@ -304,11 +311,10 @@ function CoverThumb({
         <button
           type="button"
           onClick={onPick}
-          aria-label={hasCover ? 'Replace cover' : 'Upload cover'}
+          aria-label={hasCover ? 'Replace cover' : 'Upload a cover'}
           disabled={busy}
           className={cn(
-            'group relative flex size-12 items-center justify-center overflow-hidden rounded-[14px] outline-none transition-colors',
-            hasCover ? 'bg-white/[0.06]' : 'bg-white/[0.06] text-text-tertiary hover:text-text'
+            'group relative flex size-12 items-center justify-center overflow-hidden rounded-[14px] bg-white/[0.06] text-white outline-none transition-colors'
           )}
           style={
             hasCover && previewUrl
@@ -320,16 +326,21 @@ function CoverThumb({
               : undefined
           }
         >
+          {hasCover ? null : (
+            <DitherAvatar
+              name={seed}
+              animate={false}
+              className="pointer-events-none absolute inset-0 size-full"
+            />
+          )}
           {busy ? (
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/55 text-white">
               <Ring className="size-4" />
             </span>
-          ) : hasCover ? (
+          ) : (
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100">
               <UploadGlyph />
             </span>
-          ) : (
-            <UploadGlyph />
           )}
         </button>
         {hasCover && !busy ? (

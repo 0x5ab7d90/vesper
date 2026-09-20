@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { DitherAvatar } from '@renderer/components/dither-kit/avatar'
 import { cn } from '@renderer/lib/cn'
 
 // The inset outline gives a pale or mostly-white avatar an edge against the surface.
@@ -32,14 +33,10 @@ type AvatarProps = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt'
   VariantProps<typeof avatarVariants> & {
     src?: string
     alt?: string
-    /** Seed for the dicebear glass fallback. Falls back to `alt` when missing. */
+    /** Seeds the generated mark when there is no picture. Falls back to `alt` when missing. */
     seed?: string
     ref?: React.Ref<HTMLImageElement>
   }
-
-function glassUrl(seed: string): string {
-  return `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(seed)}`
-}
 
 export function Avatar({
   className,
@@ -52,15 +49,22 @@ export function Avatar({
   ...props
 }: AvatarProps): React.JSX.Element {
   const [errored, setErrored] = useState(false)
-  const fallbackSeed = seed ?? alt ?? 'vesper'
-  const actualSrc = src && !errored ? src : glassUrl(fallbackSeed)
+  const classes = cn(avatarVariants({ size, shape }), className)
+
+  // No picture, or one that failed to load: the same generated mark the rest of the app uses,
+  // seeded by name so an actor with no headshot still looks like themselves every time. Still,
+  // so a cast row of twenty does not all animate at once.
+  if (!src || errored) {
+    return <DitherAvatar name={seed ?? alt ?? 'vesper'} animate={false} className={classes} />
+  }
+
   return (
     <img
       ref={ref}
-      src={actualSrc}
+      src={src}
       alt={alt ?? ''}
       onError={() => setErrored(true)}
-      className={cn(avatarVariants({ size, shape }), className)}
+      className={classes}
       {...props}
     />
   )

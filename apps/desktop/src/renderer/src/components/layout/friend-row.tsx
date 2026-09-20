@@ -1,3 +1,4 @@
+import { DitherAvatar } from '@renderer/components/dither-kit/avatar'
 import { ProgressBar } from '@renderer/components/ui/progress-bar'
 import { Tooltip } from '@renderer/components/ui/tooltip'
 import { cn } from '@renderer/lib/cn'
@@ -24,16 +25,13 @@ export interface FriendRowProps {
   show: string
   poster: string
   status: FriendStatus
-  glassSeed: string
+  /** Seeds the generated avatar when the friend has no picture — their username. */
+  seed: string
   avatarUrl?: string
   progress?: number
   timestamp?: string
   pausedText?: string
   onClick?: () => void
-}
-
-function glassUrl(seed: string): string {
-  return `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(seed)}`
 }
 
 function StatusDot({
@@ -59,25 +57,32 @@ function StatusDot({
 
 function Avatar({
   avatarUrl,
-  glassSeed,
+  seed,
   size,
   dotSize
 }: {
   avatarUrl?: string
-  glassSeed: string
+  seed: string
   size: number
   dotSize?: { status: FriendStatus; size: number }
 }): React.JSX.Element {
-  const src = avatarUrl ?? glassUrl(glassSeed)
   const dotOffset = dotSize && dotSize.size <= 10 ? -2 : 0
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
-      <img
-        src={src}
-        alt=""
-        aria-hidden
-        className={cn('h-full w-full rounded-full object-cover', IMG_OUTLINE)}
-      />
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt=""
+          aria-hidden
+          className={cn('h-full w-full rounded-full object-cover', IMG_OUTLINE)}
+        />
+      ) : (
+        <DitherAvatar
+          name={seed}
+          animate={false}
+          className={cn('h-full w-full overflow-hidden rounded-full bg-surface-3', IMG_OUTLINE)}
+        />
+      )}
       {dotSize ? (
         <StatusDot
           status={dotSize.status}
@@ -95,7 +100,7 @@ export function FriendRow({
   show,
   poster,
   status,
-  glassSeed,
+  seed,
   avatarUrl,
   progress,
   timestamp,
@@ -121,23 +126,13 @@ export function FriendRow({
           aria-label={show}
         />
       ) : (
-        <Avatar
-          avatarUrl={avatarUrl}
-          glassSeed={glassSeed}
-          size={56}
-          dotSize={{ status, size: 14 }}
-        />
+        <Avatar avatarUrl={avatarUrl} seed={seed} size={56} dotSize={{ status, size: 14 }} />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
         <div className="flex min-w-0 items-center gap-2">
           {hasPoster ? (
-            <Avatar
-              avatarUrl={avatarUrl}
-              glassSeed={glassSeed}
-              size={18}
-              dotSize={{ status, size: 8 }}
-            />
+            <Avatar avatarUrl={avatarUrl} seed={seed} size={18} dotSize={{ status, size: 8 }} />
           ) : null}
           <span className="truncate text-[13px] leading-4 font-medium text-text">{name}</span>
         </div>
