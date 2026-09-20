@@ -626,6 +626,52 @@ async function getOrCreateWatchedList(
   return created
 }
 
+/** Puts a title in the user's Watched list, creating the list on first use and pushing the
+ *  watch to Trakt. A title already in the list is left alone. Shared with playback, which
+ *  calls this once progress crosses the watched threshold. */
+export async function addToWatchedList(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  item: {
+    mediaType: Doc<'listItems'>['mediaType']
+    tmdbId: number
+    title: string
+    posterPath?: string
+  }
+): Promise<void> {
+  const { mediaType, tmdbId, title, posterPath } = item
+  const list = await getOrCreateWatchedList(ctx, userId)
+  const dupe = await ctx.db
+    .query('listItems')
+    .withIndex('by_listId_and_media', (q) =>
+      q.eq('listId', list._id).eq('mediaType', mediaType).eq('tmdbId', tmdbId)
+    )
+    .unique()
+  if (dupe) return
+  const now = Date.now()
+  const itemId = await ctx.db.insert('listItems', {
+    listId: list._id,
+    mediaType,
+    tmdbId,
+    addedBy: userId,
+    addedAt: now,
+    title,
+    posterPath
+  })
+  await ctx.db.patch(list._id, {
+    itemCount: list.itemCount + 1,
+    lastItemAddedAt: now
+  })
+  if (!posterPath) {
+    await ctx.scheduler.runAfter(0, internal.lists.backfillItemPoster, {
+      listItemId: itemId,
+      mediaType,
+      tmdbId
+    })
+  }
+  await ctx.scheduler.runAfter(0, internal.trakt.pushWatched, { userId, mediaType, tmdbId })
+}
+
 export const markWatched = mutation({
   args: {
     mediaType: mediaTypeValidator,
@@ -633,38 +679,9 @@ export const markWatched = mutation({
     title: v.string(),
     posterPath: v.optional(v.string())
   },
-  handler: async (ctx, { mediaType, tmdbId, title, posterPath }) => {
+  handler: async (ctx, args) => {
     const userId = await requireUserId(ctx)
-    const list = await getOrCreateWatchedList(ctx, userId)
-    const dupe = await ctx.db
-      .query('listItems')
-      .withIndex('by_listId_and_media', (q) =>
-        q.eq('listId', list._id).eq('mediaType', mediaType).eq('tmdbId', tmdbId)
-      )
-      .unique()
-    if (dupe) return
-    const now = Date.now()
-    const itemId = await ctx.db.insert('listItems', {
-      listId: list._id,
-      mediaType,
-      tmdbId,
-      addedBy: userId,
-      addedAt: now,
-      title,
-      posterPath
-    })
-    await ctx.db.patch(list._id, {
-      itemCount: list.itemCount + 1,
-      lastItemAddedAt: now
-    })
-    if (!posterPath) {
-      await ctx.scheduler.runAfter(0, internal.lists.backfillItemPoster, {
-        listItemId: itemId,
-        mediaType,
-        tmdbId
-      })
-    }
-    await ctx.scheduler.runAfter(0, internal.trakt.pushWatched, { userId, mediaType, tmdbId })
+    await addToWatchedList(ctx, userId, args)
   }
 })
 

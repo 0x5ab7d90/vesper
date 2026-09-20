@@ -5,8 +5,12 @@ import { internal } from './_generated/api'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import type { Doc } from './_generated/dataModel'
 import { presence } from './presence'
+import { addToWatchedList } from './lists'
 
 const COMPLETE_THRESHOLD = 0.95
+// Half of a movie or an episode is enough to call it watched. Continue Watching still keeps
+// it around until COMPLETE_THRESHOLD, so counting it does not mean you have finished it.
+const WATCHED_THRESHOLD = 0.5
 
 const SCROBBLE_ACTION = {
   playing: 'start',
@@ -43,17 +47,25 @@ export const upsert = mutation({
     posterPath: v.optional(v.string()),
     backdropPath: v.optional(v.string()),
     streamUrl: v.optional(v.string()),
-    episodeLabel: v.optional(v.string())
+    episodeLabel: v.optional(v.string()),
+    // Only the player knows the show's shape: true when this is the last episode of the last
+    // season, which is what promotes a finished episode into a finished series.
+    isSeriesFinale: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
     if (!userId) throw new Error('Not authenticated')
     const now = Date.now()
     const existing = await findRow(ctx, userId, args.imdbId, args.season, args.episode)
+    // Crossing the threshold is a one-time event: the stamp is kept once set, so unmarking a
+    // title by hand is not undone by the next progress tick.
+    const crossed = args.durationSec > 0 && args.positionSec / args.durationSec >= WATCHED_THRESHOLD
+    const justCrossed = crossed && existing?.watchedAt === undefined
     const patch = {
       positionSec: args.positionSec,
       durationSec: args.durationSec,
       state: args.state,
+      watchedAt: existing?.watchedAt ?? (crossed ? now : undefined),
       title: args.title,
       tmdbId: args.tmdbId,
       posterPath: args.posterPath,
@@ -72,6 +84,20 @@ export const upsert = mutation({
           episode: args.episode,
           ...patch
         })
+
+    // A watched movie, or a watched finale, belongs in the Watched list. Episodes short of the
+    // finale are recorded by the stamp above and nothing else: the list holds titles, not episodes.
+    if (justCrossed && args.tmdbId !== undefined && args.title) {
+      const whole = args.mediaType === 'movie' || args.isSeriesFinale === true
+      if (whole) {
+        await addToWatchedList(ctx, userId, {
+          mediaType: args.mediaType,
+          tmdbId: args.tmdbId,
+          title: args.title,
+          posterPath: args.posterPath
+        })
+      }
+    }
 
     // Live Trakt scrobble — fire only on a play/pause/stop transition, not every tick.
     if (args.state && args.state !== existing?.state && args.durationSec > 0) {
@@ -280,7 +306,8 @@ export const markWatched = mutation({
     posterPath: v.optional(v.string()),
     backdropPath: v.optional(v.string()),
     episodeLabel: v.optional(v.string()),
-    runtimeSec: v.optional(v.number())
+    runtimeSec: v.optional(v.number()),
+    isSeriesFinale: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx)
@@ -288,10 +315,19 @@ export const markWatched = mutation({
     const now = Date.now()
     const duration = args.runtimeSec && args.runtimeSec > 0 ? args.runtimeSec : 1
     const existing = await findRow(ctx, userId, args.imdbId, args.season, args.episode)
+    if (args.isSeriesFinale === true && args.tmdbId !== undefined && args.title) {
+      await addToWatchedList(ctx, userId, {
+        mediaType: args.mediaType,
+        tmdbId: args.tmdbId,
+        title: args.title,
+        posterPath: args.posterPath
+      })
+    }
     const patch = {
       positionSec: duration,
       durationSec: duration,
       state: 'idle' as const,
+      watchedAt: existing?.watchedAt ?? now,
       title: args.title,
       tmdbId: args.tmdbId,
       posterPath: args.posterPath,

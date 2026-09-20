@@ -158,6 +158,9 @@ export default defineSchema({
     positionSec: v.number(),
     durationSec: v.number(),
     state: v.optional(v.union(v.literal('playing'), v.literal('paused'), v.literal('idle'))),
+    // Stamped the moment playback first crossed the watched threshold. Separate from position
+    // so seeking back, or a rewatch, does not un-watch what you already finished.
+    watchedAt: v.optional(v.number()),
     title: v.optional(v.string()),
     tmdbId: v.optional(v.number()),
     posterPath: v.optional(v.string()),

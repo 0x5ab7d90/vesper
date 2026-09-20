@@ -40,6 +40,15 @@ export function SeasonEpisodes({
 
   const progressRows = useConvexQuery(api.playback.listForSeries, imdbId ? { imdbId } : 'skip')
 
+  // Last episode of the last season: marking it watched finishes the whole show.
+  const finale = useMemo(() => {
+    const last = seasons.reduce<TmdbSeasonSummary | null>(
+      (best, s) => (!best || s.season_number > best.season_number ? s : best),
+      null
+    )
+    return last ? { season: last.season_number, episode: last.episode_count } : null
+  }, [seasons])
+
   if (seasons.length === 0) return null
   const seasonNum = season
 
@@ -72,6 +81,7 @@ export function SeasonEpisodes({
         posterPath={details.poster_path ?? undefined}
         backdropPath={details.backdrop_path ?? undefined}
         progressRows={progressRows ?? null}
+        finale={finale}
         onPlay={(ep, epName) => onPlay(seasonNum, ep, epName)}
         focusEpisode={focusSeason === seasonNum ? focusEpisode : undefined}
         onFocusApplied={onFocusApplied}
@@ -143,7 +153,9 @@ interface EpisodesRowProps {
     episode?: number
     positionSec: number
     durationSec: number
+    watchedAt?: number
   }> | null
+  finale: { season: number; episode: number } | null
   onPlay: (episode: number, episodeName?: string) => void
   focusEpisode?: number
   onFocusApplied?: () => void
@@ -158,6 +170,7 @@ function EpisodesRow({
   posterPath,
   backdropPath,
   progressRows,
+  finale,
   onPlay,
   focusEpisode,
   onFocusApplied
@@ -173,7 +186,7 @@ function EpisodesRow({
     for (const r of progressRows ?? []) {
       if (r.season !== seasonNumber || r.episode === undefined) continue
       const pct = r.durationSec > 0 ? (r.positionSec / r.durationSec) * 100 : 0
-      map.set(r.episode, { pct, watched: pct >= 95 })
+      map.set(r.episode, { pct, watched: r.watchedAt !== undefined || pct >= 95 })
     }
     return map
   }, [progressRows, seasonNumber])
@@ -205,7 +218,8 @@ function EpisodesRow({
       posterPath,
       backdropPath,
       episodeLabel: `${title} · S${pad(seasonNumber)}E${pad(ep.episode_number)}`,
-      runtimeSec: ep.runtime ? ep.runtime * 60 : undefined
+      runtimeSec: ep.runtime ? ep.runtime * 60 : undefined,
+      isSeriesFinale: finale?.season === seasonNumber && finale?.episode === ep.episode_number
     })
   }
 
