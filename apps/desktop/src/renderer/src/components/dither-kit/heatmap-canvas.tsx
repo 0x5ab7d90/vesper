@@ -81,6 +81,12 @@ export function HeatmapCanvas() {
       const nCols = s.columns.length
       const sx = cols / Math.max(width, 1)
       const sy = rows / Math.max(height, 1)
+      // The gap between cells is an inset measured in panel pixels, but the backing canvas is
+      // coarser than the panel once MAX_COLS caps it. On a wide window a 3px gap lands under
+      // half a backing pixel, rounds away, and the row fuses into one band. Quantise cells to
+      // the backing grid and always keep at least one pixel back for the gap.
+      const gx = Math.max(1, Math.round(s.gap * sx))
+      const gy = Math.max(1, Math.round(s.gap * sy))
       // Ease-out: the sweep moves right away and settles, like anything that appears.
       const reveal = easeOutCubic(prog)
       const diag = Math.max(nRows + nCols - 2, 1)
@@ -90,11 +96,15 @@ export function HeatmapCanvas() {
 
       for (let r = 0; r < nRows; r++) {
         for (let col = 0; col < nCols; col++) {
+          // Cell bounds come from the gapless grid the cell sits in, so neighbours quantise to
+          // the same boundary and every cell ends up the same size.
           const rect = s.cell(r, col)
-          const x0 = Math.round(rect.x * sx)
-          const y0 = Math.round(rect.y * sy)
-          const x1 = Math.min(cols, Math.max(x0 + 1, Math.round((rect.x + rect.width) * sx)))
-          const y1 = Math.min(rows, Math.max(y0 + 1, Math.round((rect.y + rect.height) * sy)))
+          const x0 = Math.max(0, Math.round((rect.x - s.gap / 2) * sx))
+          const y0 = Math.max(0, Math.round((rect.y - s.gap / 2) * sy))
+          const xEnd = Math.round((rect.x + rect.width + s.gap / 2) * sx)
+          const yEnd = Math.round((rect.y + rect.height + s.gap / 2) * sy)
+          const x1 = Math.min(cols, Math.max(x0 + 1, xEnd - gx))
+          const y1 = Math.min(rows, Math.max(y0 + 1, yEnd - gy))
           // Diagonal ripple: a cell's share of the sweep is its distance from
           // the top-left corner; it fades in over SPREAD of the sweep behind the front.
           const frac = (r + col) / diag
