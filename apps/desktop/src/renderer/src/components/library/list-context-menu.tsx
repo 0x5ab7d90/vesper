@@ -35,6 +35,9 @@ export function ListContextMenu({
   const unpinList = useMutation(api.lists.unpinList)
   const canPin = list.kind === 'custom'
   const pinned = !!list.pinned
+  // Watched and Liked can't be renamed, pinned or deleted, so right-clicking them has nothing
+  // to offer. Better no menu at all than an empty one.
+  const hasItems = !!onOpen || canPin || !list.locked
 
   const togglePin = (): void => {
     if (pinned) void unpinList({ listId: list._id as Id<'lists'> })
@@ -65,6 +68,8 @@ export function ListContextMenu({
       ) : null}
     </>
   )
+
+  if (!hasItems) return <>{asPopover ? asPopover.trigger : children}</>
 
   return (
     <>
