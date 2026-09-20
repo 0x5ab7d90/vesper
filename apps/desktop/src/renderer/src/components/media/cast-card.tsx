@@ -1,9 +1,7 @@
-import { useRef } from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
-import { useNavigate } from '@tanstack/react-router'
 import { Avatar } from '@renderer/components/ui/avatar'
+import { openPerson } from '@renderer/lib/person-modal'
 import { tmdbImage } from '@renderer/lib/tmdb'
-import { usePreloadRoute } from '@renderer/lib/use-preload-route'
 
 export interface CastCardProps {
   personId: number
@@ -18,19 +16,9 @@ export function CastCard({
   character,
   profilePath
 }: CastCardProps): React.JSX.Element {
-  const navigate = useNavigate()
-  const ref = useRef<HTMLButtonElement>(null)
-  usePreloadRoute(ref, { to: '/person/$id', params: { id: String(personId) } })
   return (
     <BaseButton
-      ref={ref}
-      onClick={() =>
-        navigate({
-          to: '/person/$id',
-          params: { id: String(personId) },
-          viewTransition: false
-        })
-      }
+      onClick={() => openPerson(personId)}
       className="flex w-[100px] shrink-0 flex-col items-center gap-2 bg-transparent text-center outline-none"
       aria-label={name}
     >

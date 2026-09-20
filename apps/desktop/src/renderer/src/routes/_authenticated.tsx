@@ -5,6 +5,7 @@ import 'allotment/dist/style.css'
 import { TopBar } from '@renderer/components/layout/top-bar'
 import { LeftSidebar } from '@renderer/components/layout/left-sidebar'
 import { RightSidebar } from '@renderer/components/layout/right-sidebar'
+import { PersonModal } from '@renderer/components/media/person-modal'
 import { ProfileModal } from '@renderer/components/profile/profile-modal'
 import { popularMoviesQuery, trendingTvQuery } from '@renderer/lib/tmdb-queries'
 import { usePersistedState } from '@renderer/hooks/use-persisted-state'
@@ -267,6 +268,7 @@ function AuthedLayout(): React.JSX.Element {
         </Allotment>
       </div>
       <ProfileModal />
+      <PersonModal />
     </div>
   )
 }
