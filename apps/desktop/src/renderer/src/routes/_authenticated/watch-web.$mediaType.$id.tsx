@@ -26,6 +26,9 @@ import {
   type WebStream
 } from '@renderer/lib/web-sources'
 import { useDiscordPresence } from '@renderer/hooks/use-discord-presence'
+import { movieDetailsQuery, tvDetailsQuery } from '@renderer/lib/tmdb-queries'
+import type { TmdbSeasonSummary } from '@renderer/lib/tmdb'
+import { api } from '@convex/_generated/api'
 import { useKeepAwake } from '@renderer/hooks/use-keep-awake'
 import { SubtitleMenu } from '@renderer/components/player/subtitle-menu'
 import { FlagTile } from '@renderer/components/player/flag-tile'
@@ -36,6 +39,8 @@ import {
   type SubtitleStyle
 } from '@renderer/lib/subtitle-prefs'
 import { readOffset, writeOffset, type OffsetScope } from '@renderer/lib/subtitle-offset'
+import { useQuery as useTanstackQuery } from '@tanstack/react-query'
+import { useMutation } from 'convex/react'
 import { ContextMenu } from '@base-ui/react/context-menu'
 import { PlayerContextMenuPopup } from '@renderer/components/player/player-context-menu'
 import { VideoAnime4k } from '@renderer/lib/player/anime4k-video'
@@ -84,6 +89,9 @@ export const Route = createFileRoute('/_authenticated/watch-web/$mediaType/$id')
 })
 
 const CHROME_HIDE_MS = 2500
+// Same cadence the custom player writes at: often enough to resume where you were, rare enough
+// that a two hour film is not a few thousand mutations.
+const SAVE_THROTTLE_MS = 15000
 const VOLUME_KEY = 'vesper.player.volume'
 const SEEK_STEP_SEC = 10
 
@@ -125,6 +133,18 @@ function WatchWebPage(): React.JSX.Element {
   const [anime4kStatus, setAnime4kStatus] = useState<Anime4kStatus | null>(null)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const [ctxMenuOpen, setCtxMenuOpen] = useState(false)
+  const upsertProgress = useMutation(api.playback.upsert)
+  const lastSavedRef = useRef(0)
+  // The search params carry a ready-made poster URL, but the row stores a TMDB path. These are
+  // the same queries the title page ran, so they are usually served from cache.
+  const movieDetails = useTanstackQuery({
+    ...movieDetailsQuery(tmdbId),
+    enabled: mediaType === 'movie' && Number.isFinite(tmdbId) && tmdbId > 0
+  })
+  const tvDetails = useTanstackQuery({
+    ...tvDetailsQuery(tmdbId),
+    enabled: mediaType === 'tv' && Number.isFinite(tmdbId) && tmdbId > 0
+  })
   const hlsRef = useRef<Hls | null>(null)
   const attemptRef = useRef(0)
   const menuOpenRef = useRef(false)
@@ -318,6 +338,96 @@ function WatchWebPage(): React.JSX.Element {
     },
     [startStream]
   )
+
+  // Last episode of the last season, specials aside — what promotes a finished episode into a
+  // finished series. See playback.upsert.
+  const isSeriesFinale = useMemo(() => {
+    if (mediaType !== 'tv') return false
+    const numbered = (tvDetails.data?.seasons ?? []).filter(
+      (s) => s.season_number > 0 && s.episode_count > 0
+    )
+    const last = numbered.reduce<TmdbSeasonSummary | null>(
+      (best, s) => (!best || s.season_number > best.season_number ? s : best),
+      null
+    )
+    if (!last) return false
+    return search.season === last.season_number && search.episode === last.episode_count
+  }, [mediaType, search.season, search.episode, tvDetails.data])
+
+  /**
+   * Reports where the viewer is, so web streams feed the same places the custom player does:
+   * Continue Watching, the friends sidebar, profile recents, Trakt, and the watched list. Rows
+   * are keyed by IMDb id, so a stream that arrived without one simply is not reported.
+   */
+  const saveProgress = useCallback(
+    (overrideState?: 'playing' | 'paused' | 'idle'): void => {
+      const video = videoRef.current
+      if (!video || !search.imdbId || !duration) return
+      void upsertProgress({
+        imdbId: search.imdbId,
+        mediaType,
+        season: search.season,
+        episode: search.episode,
+        positionSec: Math.floor(video.currentTime),
+        durationSec: Math.floor(duration),
+        state: overrideState ?? (video.paused ? 'paused' : 'playing'),
+        title: search.title,
+        tmdbId,
+        posterPath:
+          (mediaType === 'movie' ? movieDetails.data?.poster_path : tvDetails.data?.poster_path) ??
+          undefined,
+        backdropPath:
+          (mediaType === 'movie'
+            ? movieDetails.data?.backdrop_path
+            : tvDetails.data?.backdrop_path) ?? undefined,
+        episodeLabel: search.episodeLabel,
+        isSeriesFinale
+      })
+    },
+    [
+      upsertProgress,
+      search.imdbId,
+      search.season,
+      search.episode,
+      search.title,
+      search.episodeLabel,
+      mediaType,
+      tmdbId,
+      duration,
+      movieDetails.data,
+      tvDetails.data,
+      isSeriesFinale
+    ]
+  )
+
+  // Held in a ref so the unmount write below can stay a mount-once effect and still call the
+  // current version. Updated in an effect rather than during render.
+  const saveProgressRef = useRef(saveProgress)
+  useEffect(() => {
+    saveProgressRef.current = saveProgress
+  }, [saveProgress])
+
+  // Leaving the player is a stop, whether that was Back, a new episode, or closing the window.
+  useEffect(() => {
+    return () => saveProgressRef.current('idle')
+  }, [])
+
+  useEffect(() => {
+    if (!duration || !timePos) return
+    const now = Date.now()
+    if (now - lastSavedRef.current < SAVE_THROTTLE_MS) return
+    lastSavedRef.current = now
+    saveProgress()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timePos, duration])
+
+  // Play and pause are the transitions Trakt scrobbles on, so they are written immediately.
+  useEffect(() => {
+    if (!duration) return
+    lastSavedRef.current = Date.now()
+    saveProgress(paused ? 'paused' : 'playing')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paused])
 
   const handleSetAnime4k = useCallback((v: Anime4kPreset | 'off'): void => {
     setAnime4kValue(v)
