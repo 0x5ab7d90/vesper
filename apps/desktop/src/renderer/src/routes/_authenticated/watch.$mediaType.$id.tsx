@@ -52,6 +52,7 @@ import type { FanartImage } from '@renderer/lib/fanart'
 import { movieDetailsQuery, tvDetailsQuery, tvSeasonQuery } from '@renderer/lib/tmdb-queries'
 import { useMediaSession } from '@renderer/lib/use-media-session'
 import { tmdbImage } from '@renderer/lib/tmdb'
+import type { TmdbSeasonSummary } from '@renderer/lib/tmdb'
 import type { EmbeddedTrack } from '@renderer/lib/use-subtitle-tracks'
 import type { AudioTrack } from '@renderer/lib/use-audio-tracks'
 import { usePlayerEngine } from '@renderer/hooks/use-player-engine'
@@ -128,8 +129,6 @@ function WatchPage(): React.JSX.Element {
     })
   }, [navigate, search.mediaType, params.id])
   const upsertProgress = useMutation(api.playback.upsert)
-  const markWatched = useMutation(api.lists.markWatched)
-  const markedWatchedRef = useRef(false)
   const tmdbId = Number(params.id)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -286,7 +285,6 @@ function WatchPage(): React.JSX.Element {
   useEffect(() => {
     subAutoAppliedRef.current = false
     audioAutoAppliedRef.current = false
-    markedWatchedRef.current = false
   }, [episodeKey])
 
   useEffect(() => {
@@ -640,6 +638,22 @@ function WatchPage(): React.JSX.Element {
     [movieDetails.data, tvDetails.data, search.mediaType]
   )
 
+  // The finale is the last episode of the highest numbered season, specials aside. Only the
+  // player has the show's shape, so it rides along with progress and lets the server promote a
+  // finished episode into a finished series.
+  const isSeriesFinale = useMemo(() => {
+    if (search.mediaType !== 'tv') return false
+    const numbered = (tvDetails.data?.seasons ?? []).filter(
+      (s) => s.season_number > 0 && s.episode_count > 0
+    )
+    const last = numbered.reduce<TmdbSeasonSummary | null>(
+      (best, s) => (!best || s.season_number > best.season_number ? s : best),
+      null
+    )
+    if (!last) return false
+    return search.season === last.season_number && search.episode === last.episode_count
+  }, [search.mediaType, search.season, search.episode, tvDetails.data])
+
   const variantContext = useMemo(
     () => ({
       mediaType: search.mediaType,
@@ -742,7 +756,8 @@ function WatchPage(): React.JSX.Element {
       posterPath,
       backdropPath,
       streamUrl: search.url,
-      episodeLabel: search.episodeLabel
+      episodeLabel: search.episodeLabel,
+      isSeriesFinale
     })
   }
 
@@ -771,41 +786,6 @@ function WatchPage(): React.JSX.Element {
     saveProgress(paused ? 'paused' : 'playing')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused])
-
-  useEffect(() => {
-    if (markedWatchedRef.current) return
-    if (!duration || !timePos) return
-    if (timePos / duration < 0.9) return
-    if (search.mediaType === 'tv') {
-      const last = tvDetails.data?.last_episode_to_air
-      if (!last) return
-      if (search.season !== last.season_number || search.episode !== last.episode_number) return
-    }
-    markedWatchedRef.current = true
-    const posterPath =
-      search.mediaType === 'movie'
-        ? (movieDetails.data?.poster_path ?? undefined)
-        : (tvDetails.data?.poster_path ?? undefined)
-    void markWatched({
-      mediaType: search.mediaType,
-      tmdbId,
-      title: search.title,
-      posterPath
-    }).catch(() => {
-      markedWatchedRef.current = false
-    })
-  }, [
-    timePos,
-    duration,
-    search.mediaType,
-    search.season,
-    search.episode,
-    search.title,
-    tmdbId,
-    tvDetails.data,
-    movieDetails.data,
-    markWatched
-  ])
 
   // Handing off to an external player pauses the internal engine, but the user is still watching —
   // keep presence in "playing" with a position that advances in wall-clock time from the handoff
