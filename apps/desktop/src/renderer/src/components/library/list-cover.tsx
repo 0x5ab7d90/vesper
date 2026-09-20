@@ -1,3 +1,4 @@
+import { DitherAvatar } from '@renderer/components/dither-kit/avatar'
 import { HeartIcon } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/cn'
 import { IMAGE_EDGE, IMG_OUTLINE } from '@renderer/components/ui/image-outline'
@@ -78,19 +79,19 @@ export function ListCover({
     )
   }
 
+  // A list with nothing in it yet gets a generated mark instead of a hole: same name, same
+  // avatar, so it is recognisable in the sidebar before the first poster lands.
   const visible = posters.filter(Boolean) as string[]
   if (visible.length === 0) {
-    const url = `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(seed ?? name ?? 'list')}`
     return (
-      <div
+      <DitherAvatar
+        name={seed ?? name ?? 'list'}
         className={cn(
           SIZE_CLASS[size],
-          'shrink-0 overflow-hidden bg-surface-3 bg-cover bg-center',
+          'shrink-0 overflow-hidden bg-surface-3',
           IMG_OUTLINE,
           className
         )}
-        style={{ backgroundImage: `url(${url})` }}
-        aria-label={name}
       />
     )
   }

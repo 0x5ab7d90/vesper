@@ -1,12 +1,16 @@
 # dither-kit (vendored)
 
 Source: https://www.tripwire.sh/dither-kit, pulled from the shadcn registry at
-`https://tripwire.sh/r/<name>.json` for `core`, `bar-chart`, `area-chart`, `radar-chart`, `pie-chart`.
+`https://tripwire.sh/r/<name>.json` for `core`, `bar-chart`, `area-chart`, `radar-chart`,
+`pie-chart`, `avatar`.
 
 Kept as close to upstream as possible so a fresh registry pull can be diffed in. Local
 changes, all marked in the files:
 
-- `palette.ts`: adds the `violet` colour, the app's mascot purple.
+- `palette.ts`: adds the `violet` colour, the app's mascot purple. The `avatar` item ships its
+  own copy of this file; the local one wins and is not overwritten on a pull.
+- `avatar.tsx` / `pixel.ts`: the generative avatar, taken verbatim. Used wherever a person or a
+  list has no picture of its own, seeded by username or list name.
 - `heatmap-*.tsx`: a heat map family the kit doesn't ship. `HeatmapChart` takes `rows`,
   `columns` and a `values[row][column]` grid and paints one dithered tile per cell, density
   following the value; `HeatmapXAxis` / `HeatmapYAxis` / `HeatmapValues` compose inside it and

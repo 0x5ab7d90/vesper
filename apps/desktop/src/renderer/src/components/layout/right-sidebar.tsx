@@ -124,7 +124,7 @@ function ActivityRow({
         show={showText}
         poster={poster}
         status={status}
-        glassSeed={row.username}
+        seed={row.username}
         avatarUrl={row.avatarUrl}
         progress={progress}
         timestamp={elapsedTimestamp ?? (showLine ? idleTimestamp : undefined)}
