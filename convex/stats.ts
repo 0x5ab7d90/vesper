@@ -204,6 +204,7 @@ const metaRow = v.object({
   genres: v.array(v.string()),
   runtimeMin: v.optional(v.number()),
   year: v.optional(v.number()),
+  releaseDate: v.optional(v.string()),
   originalLanguage: v.optional(v.string()),
   voteAverage: v.optional(v.number()),
   episodes: v.optional(v.number()),

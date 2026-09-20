@@ -238,6 +238,9 @@ export default defineSchema({
     genres: v.array(v.string()),
     runtimeMin: v.optional(v.number()),
     year: v.optional(v.number()),
+    // TMDB's release_date (movies) or first_air_date (shows), as YYYY-MM-DD. Kept alongside
+    // the year so newest and oldest can be ranked by day instead of tying on the year.
+    releaseDate: v.optional(v.string()),
     originalLanguage: v.optional(v.string()),
     voteAverage: v.optional(v.number()),
     episodes: v.optional(v.number()),

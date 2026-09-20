@@ -12,6 +12,7 @@ type Meta = Key & {
   genres: string[]
   runtimeMin?: number
   year?: number
+  releaseDate?: string
   originalLanguage?: string
   voteAverage?: number
   episodes?: number
@@ -41,6 +42,7 @@ async function fetchMeta(item: Key): Promise<Meta> {
         genres: (d.genres ?? []).map((g) => g.name),
         runtimeMin: d.runtime ?? undefined,
         year: d.release_date ? Number(d.release_date.slice(0, 4)) || undefined : undefined,
+        releaseDate: d.release_date || undefined,
         originalLanguage: d.original_language,
         voteAverage: d.vote_average,
         fetchedAt
@@ -59,6 +61,7 @@ async function fetchMeta(item: Key): Promise<Meta> {
       genres: (d.genres ?? []).map((g) => g.name),
       runtimeMin: d.episode_run_time?.[0],
       year: d.first_air_date ? Number(d.first_air_date.slice(0, 4)) || undefined : undefined,
+      releaseDate: d.first_air_date || undefined,
       originalLanguage: d.original_language,
       voteAverage: d.vote_average,
       episodes: d.number_of_episodes,
@@ -70,6 +73,13 @@ async function fetchMeta(item: Key): Promise<Meta> {
     console.warn(`[stats] no meta for ${keyOf(key)}: ${e instanceof Error ? e.message : e}`)
     return { ...key, genres: [], fetchedAt }
   }
+}
+
+/** Drops the sort key: the snapshot only carries what the card draws. */
+function undated<T extends { title: string; posterPath?: string; year: number }>(
+  ref: T | null
+): { title: string; posterPath?: string; year: number } | null {
+  return ref ? { title: ref.title, posterPath: ref.posterPath, year: ref.year } : null
 }
 
 function top(counts: Map<string, number>, n: number): { label: string; count: number }[] {
@@ -91,7 +101,12 @@ export const compute = internalAction({
       })
       const meta = new Map<string, Meta>()
       for (const m of known) meta.set(keyOf(m), m)
-      const missing = items.filter((i) => !meta.has(keyOf(i)))
+      // Rows cached before releaseDate existed carry a year but no date; refetch them once so
+      // the newest and oldest picks can be compared by day. A title TMDB no longer knows has
+      // no year either, so it stays put and the job does not ask again.
+      const stale = (m: Meta | undefined): boolean =>
+        m !== undefined && m.year !== undefined && m.releaseDate === undefined
+      const missing = items.filter((i) => !meta.has(keyOf(i)) || stale(meta.get(keyOf(i))))
       for (let i = 0; i < missing.length; i += CONCURRENCY) {
         const batch = await Promise.all(missing.slice(i, i + CONCURRENCY).map(fetchMeta))
         for (const m of batch) meta.set(keyOf(m), m)
@@ -110,8 +125,9 @@ export const compute = internalAction({
       let movieMinutes = 0
       type Ref = { title: string; posterPath?: string }
       let longestMovie: (Ref & { runtimeMin: number }) | null = null
-      let oldest: (Ref & { year: number }) | null = null
-      let newest: (Ref & { year: number }) | null = null
+      type Dated = Ref & { year: number; on: string }
+      let oldest: Dated | null = null
+      let newest: Dated | null = null
 
       const since = new Date()
       since.setMonth(since.getMonth() - 11, 1)
@@ -139,8 +155,11 @@ export const compute = internalAction({
           const label = `${Math.floor(m.year / 10) * 10}s`
           decades.set(label, (decades.get(label) ?? 0) + 1)
           const ref: Ref = { title: item.title, posterPath: item.posterPath }
-          if (!oldest || m.year < oldest.year) oldest = { ...ref, year: m.year }
-          if (!newest || m.year > newest.year) newest = { ...ref, year: m.year }
+          // Compare on the full date so same-year titles do not tie and hand the pick to
+          // whichever the loop happened to see first. A bare year sorts to January 1st.
+          const on = m.releaseDate ?? String(m.year)
+          if (!oldest || on < oldest.on) oldest = { ...ref, year: m.year, on }
+          if (!newest || on > newest.on) newest = { ...ref, year: m.year, on }
         }
         if (item.mediaType === 'movie' && m.runtimeMin) {
           movieMinutes += m.runtimeMin
@@ -201,8 +220,8 @@ export const compute = internalAction({
         ratings: ratingsSummary,
         highlights: {
           longestMovie,
-          oldest,
-          newest,
+          oldest: undated(oldest),
+          newest: undated(newest),
           topRated,
           busiestMonth: busiest ? { label: busiest.label, count: busiest.count } : null
         }
