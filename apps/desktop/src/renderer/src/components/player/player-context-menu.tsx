@@ -10,17 +10,22 @@ import {
 } from '@renderer/lib/player/anime4k'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
 
+/**
+ * Shared by both players, so anything only one of them can do is optional and simply absent from
+ * the other's menu. A web stream has no decoder stats to show and no frame of its own to copy;
+ * listing those as dead entries would be worse than leaving them out.
+ */
 interface Props {
-  statsVisible: boolean
-  onToggleStats: () => void
+  statsVisible?: boolean
+  onToggleStats?: () => void
   playbackSpeed: number
   onSetSpeed: (speed: number) => void
   anime4kValue: Anime4kPreset | 'off'
   anime4kStatus: Anime4kStatus | null
   onSetAnime4k: (v: Anime4kPreset | 'off') => void
-  onScreenshot: () => void
+  onScreenshot?: () => void
   onReload: () => void
-  onShowShortcuts: () => void
+  onShowShortcuts?: () => void
 }
 
 function anime4kNote(status: Anime4kStatus | null): string | null {
@@ -60,10 +65,12 @@ export function PlayerContextMenuPopup({
             falls through to the first tabbable in the document — the shell's search input
             under the player, whose focus opens the search popover. Don't move focus at all. */}
         <ContextMenu.Popup className={popupClass} style={popupStyle} finalFocus={false}>
-          <ContextMenu.Item className={itemClass} onClick={onToggleStats}>
-            <span>Stats for nerds</span>
-            {statsVisible ? <CheckIcon className="size-3.5 text-white" /> : null}
-          </ContextMenu.Item>
+          {onToggleStats ? (
+            <ContextMenu.Item className={itemClass} onClick={onToggleStats}>
+              <span>Stats for nerds</span>
+              {statsVisible ? <CheckIcon className="size-3.5 text-white" /> : null}
+            </ContextMenu.Item>
+          ) : null}
 
           <ContextMenu.SubmenuRoot>
             <ContextMenu.SubmenuTrigger className={itemClass}>
@@ -131,18 +138,23 @@ export function PlayerContextMenuPopup({
 
           <Separator />
 
-          <ContextMenu.Item className={itemClass} onClick={onScreenshot}>
-            <span>Copy frame to clipboard</span>
-          </ContextMenu.Item>
+          {onScreenshot ? (
+            <ContextMenu.Item className={itemClass} onClick={onScreenshot}>
+              <span>Copy frame to clipboard</span>
+            </ContextMenu.Item>
+          ) : null}
           <ContextMenu.Item className={itemClass} onClick={onReload}>
             <span>Reload stream</span>
           </ContextMenu.Item>
 
-          <Separator />
-
-          <ContextMenu.Item className={itemClass} onClick={onShowShortcuts}>
-            <span>Keyboard shortcuts</span>
-          </ContextMenu.Item>
+          {onShowShortcuts ? (
+            <>
+              <Separator />
+              <ContextMenu.Item className={itemClass} onClick={onShowShortcuts}>
+                <span>Keyboard shortcuts</span>
+              </ContextMenu.Item>
+            </>
+          ) : null}
         </ContextMenu.Popup>
       </ContextMenu.Positioner>
     </ContextMenu.Portal>

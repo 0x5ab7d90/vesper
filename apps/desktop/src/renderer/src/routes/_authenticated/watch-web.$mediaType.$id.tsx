@@ -36,6 +36,16 @@ import {
   type SubtitleStyle
 } from '@renderer/lib/subtitle-prefs'
 import { readOffset, writeOffset, type OffsetScope } from '@renderer/lib/subtitle-offset'
+import { ContextMenu } from '@base-ui/react/context-menu'
+import { PlayerContextMenuPopup } from '@renderer/components/player/player-context-menu'
+import { VideoAnime4k } from '@renderer/lib/player/anime4k-video'
+import type { Anime4kPreset, Anime4kStatus } from '@renderer/lib/player/anime4k'
+import {
+  readAnime4kEnabled,
+  readAnime4kPreset,
+  writeAnime4kEnabled,
+  writeAnime4kPreset
+} from '@renderer/lib/player-prefs'
 
 // Web sources play through hls.js + <video>, the same way fights do
 // (ADR-0016): the custom engine has no manifest layer. Unlike fights these
@@ -106,6 +116,15 @@ function WatchWebPage(): React.JSX.Element {
   const streams = useMemo(() => sortWebStreams(web.streams), [web.streams])
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const upscaleCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const upscalerRef = useRef<VideoAnime4k | null>(null)
+  const [upscaling, setUpscaling] = useState(false)
+  const [anime4kValue, setAnime4kValue] = useState<Anime4kPreset | 'off'>(() =>
+    readAnime4kEnabled() ? readAnime4kPreset() : 'off'
+  )
+  const [anime4kStatus, setAnime4kStatus] = useState<Anime4kStatus | null>(null)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
+  const [ctxMenuOpen, setCtxMenuOpen] = useState(false)
   const hlsRef = useRef<Hls | null>(null)
   const attemptRef = useRef(0)
   const menuOpenRef = useRef(false)
@@ -194,6 +213,36 @@ function WatchWebPage(): React.JSX.Element {
     [streams, selectedId]
   )
 
+  useEffect(() => {
+    const video = videoRef.current
+    const canvas = upscaleCanvasRef.current
+    if (!video || !canvas) return
+    const upscaler = new VideoAnime4k()
+    upscalerRef.current = upscaler
+    upscaler.onStatus = (status) => {
+      setUpscaling(status.kind === 'active')
+      setAnime4kStatus(status)
+    }
+    const sync = (): void => {
+      const enabled = readAnime4kEnabled()
+      const preset = readAnime4kPreset()
+      setAnime4kValue(enabled ? preset : 'off')
+      upscaler.setPref({ enabled, preset })
+    }
+    void upscaler.attach(video, canvas).then(sync)
+    // A new stream means new dimensions, and the bypass rule is a function of them.
+    video.addEventListener('loadedmetadata', sync)
+    // Settings writes the pref from another surface; localStorage events carry the change.
+    window.addEventListener('storage', sync)
+    return () => {
+      video.removeEventListener('loadedmetadata', sync)
+      window.removeEventListener('storage', sync)
+      upscaler.destroy()
+      upscalerRef.current = null
+      setUpscaling(false)
+    }
+  }, [])
+
   const destroyHls = useCallback((): void => {
     hlsRef.current?.destroy()
     hlsRef.current = null
@@ -269,6 +318,25 @@ function WatchWebPage(): React.JSX.Element {
     },
     [startStream]
   )
+
+  const handleSetAnime4k = useCallback((v: Anime4kPreset | 'off'): void => {
+    setAnime4kValue(v)
+    const enabled = v !== 'off'
+    writeAnime4kEnabled(enabled)
+    if (enabled) writeAnime4kPreset(v)
+    const preset = enabled ? v : readAnime4kPreset()
+    upscalerRef.current?.setPref({ enabled, preset })
+  }, [])
+
+  const handleSetSpeed = useCallback((speed: number): void => {
+    setPlaybackSpeed(speed)
+    const video = videoRef.current
+    if (video) video.playbackRate = speed
+  }, [])
+
+  const handleReload = useCallback((): void => {
+    if (selected) void startStream(selected, videoRef.current?.currentTime ?? 0)
+  }, [selected, startStream])
 
   const noStreams = web.done && !web.error && streams.length === 0
   const listFailed = web.error
@@ -423,178 +491,211 @@ function WatchWebPage(): React.JSX.Element {
   const remaining = Math.max(0, duration - timePos)
 
   return (
-    <div
-      className={cn('fixed inset-0 z-50 flex flex-col bg-black', !showChrome && 'cursor-none')}
-      onMouseMove={poke}
-      onClick={poke}
-    >
-      <div className="app-drag pointer-events-auto absolute inset-x-0 top-0 z-40 h-12" />
-      <video
-        ref={videoRef}
-        className="absolute inset-0 h-full w-full object-contain"
-        onClick={(e) => {
-          e.stopPropagation()
-          togglePause()
-          poke()
-        }}
-      />
-
-      <SubtitleOverlay
-        getCurrentTime={() => videoRef.current?.currentTime ?? 0}
-        selected={selectedSub}
-        style={subStyle}
-        bottomGap={showChrome ? 10 : 0}
-        offsetSec={subOffsetSec}
-      />
-
-      {phase === 'loading' && !noStreams && !listFailed ? (
-        <LoadingOverlay poster={search.poster} />
-      ) : null}
-      {phase === 'error' || noStreams || listFailed ? (
-        <ErrorOverlay
-          streams={streams}
-          selectedId={selectedId}
-          listFailed={listFailed}
-          onPick={switchTo}
-          onBack={goBack}
-        />
-      ) : null}
-
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 z-30 transition-opacity duration-200',
-          showChrome ? 'opacity-100' : 'opacity-0 [&_*]:!pointer-events-none'
-        )}
+    <ContextMenu.Root open={ctxMenuOpen} onOpenChange={setCtxMenuOpen}>
+      <ContextMenu.Trigger
+        render={
+          <div
+            className={cn(
+              'fixed inset-0 z-50 flex flex-col bg-black',
+              !showChrome && 'cursor-none'
+            )}
+          />
+        }
+        onMouseMove={poke}
+        onClick={poke}
       >
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[140px]"
-          style={{
-            backgroundImage:
-              'linear-gradient(180deg, oklab(0% 0 0 / 70%) 0%, oklab(0% 0 0 / 0%) 100%)'
+        <div className="app-drag pointer-events-auto absolute inset-x-0 top-0 z-40 h-12" />
+        {/* The element keeps playing and keeps the audio; while Anime4K is running the canvas over
+          it is what you actually watch. Hidden rather than unmounted, since it is still the
+          source of every frame. */}
+        <video
+          ref={videoRef}
+          className={cn('absolute inset-0 h-full w-full object-contain', upscaling && 'invisible')}
+          onClick={(e) => {
+            e.stopPropagation()
+            togglePause()
+            poke()
           }}
         />
-        <div className="pointer-events-auto absolute inset-x-8 top-12 flex items-center gap-[18px]">
-          <button
-            type="button"
-            onClick={goBack}
-            aria-label="Back"
-            className="flex size-11 shrink-0 items-center justify-center rounded-full text-white outline-none"
-          >
-            <BackArrowIcon />
-          </button>
-          <div className="flex min-w-0 flex-col gap-[3px]">
-            <h1 className="truncate text-[18px] leading-[22px] font-bold tracking-[-0.01em] text-white">
-              {search.title}
-            </h1>
-            {subtitle ? (
-              <span className="truncate text-[11px] leading-[14px] font-medium tracking-[0.12em] text-white/55 uppercase">
-                {subtitle}
-              </span>
-            ) : null}
-          </div>
-        </div>
+        <canvas
+          ref={upscaleCanvasRef}
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-0 h-full w-full object-contain',
+            !upscaling && 'invisible'
+          )}
+        />
+
+        <SubtitleOverlay
+          getCurrentTime={() => videoRef.current?.currentTime ?? 0}
+          selected={selectedSub}
+          style={subStyle}
+          bottomGap={showChrome ? 10 : 0}
+          offsetSec={subOffsetSec}
+        />
+
+        {phase === 'loading' && !noStreams && !listFailed ? (
+          <LoadingOverlay poster={search.poster} />
+        ) : null}
+        {phase === 'error' || noStreams || listFailed ? (
+          <ErrorOverlay
+            streams={streams}
+            selectedId={selectedId}
+            listFailed={listFailed}
+            onPick={switchTo}
+            onBack={goBack}
+          />
+        ) : null}
 
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[200px]"
-          style={{
-            backgroundImage:
-              'linear-gradient(0deg, oklab(0% 0 0 / 85%) 0%, oklab(0% 0 0 / 0%) 100%)'
-          }}
-        />
-        <div className="pointer-events-auto absolute inset-x-8 bottom-4 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <span className="w-14 shrink-0 text-right text-[12px] leading-4 font-medium text-white/80 tabular-nums">
-              {formatTime(timePos)}
-            </span>
-            <ProgressBar value={timePos} duration={duration} buffered={buffered} onSeek={seekTo} />
-            <span className="w-14 shrink-0 text-[12px] leading-4 font-medium text-white/80 tabular-nums">
-              -{formatTime(remaining)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
+          className={cn(
+            'pointer-events-none absolute inset-0 z-30 transition-opacity duration-200',
+            showChrome ? 'opacity-100' : 'opacity-0 [&_*]:!pointer-events-none'
+          )}
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-[140px]"
+            style={{
+              backgroundImage:
+                'linear-gradient(180deg, oklab(0% 0 0 / 70%) 0%, oklab(0% 0 0 / 0%) 100%)'
+            }}
+          />
+          <div className="pointer-events-auto absolute inset-x-8 top-12 flex items-center gap-[18px]">
             <button
               type="button"
-              onClick={togglePause}
-              aria-label={paused ? 'Play' : 'Pause'}
-              className="flex size-12 items-center justify-center text-white outline-none"
+              onClick={goBack}
+              aria-label="Back"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full text-white outline-none"
             >
-              <span className="t-icon-swap" data-state={paused ? 'a' : 'b'}>
-                <span className="t-icon inline-flex" data-icon="a" aria-hidden={!paused}>
-                  <BigPlayIcon />
-                </span>
-                <span className="t-icon inline-flex" data-icon="b" aria-hidden={paused}>
-                  <BigPauseIcon />
-                </span>
-              </span>
+              <BackArrowIcon />
             </button>
+            <div className="flex min-w-0 flex-col gap-[3px]">
+              <h1 className="truncate text-[18px] leading-[22px] font-bold tracking-[-0.01em] text-white">
+                {search.title}
+              </h1>
+              {subtitle ? (
+                <span className="truncate text-[11px] leading-[14px] font-medium tracking-[0.12em] text-white/55 uppercase">
+                  {subtitle}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[200px]"
+            style={{
+              backgroundImage:
+                'linear-gradient(0deg, oklab(0% 0 0 / 85%) 0%, oklab(0% 0 0 / 0%) 100%)'
+            }}
+          />
+          <div className="pointer-events-auto absolute inset-x-8 bottom-4 flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 pr-1.5">
+              <span className="w-14 shrink-0 text-right text-[12px] leading-4 font-medium text-white/80 tabular-nums">
+                {formatTime(timePos)}
+              </span>
+              <ProgressBar
+                value={timePos}
+                duration={duration}
+                buffered={buffered}
+                onSeek={seekTo}
+              />
+              <span className="w-14 shrink-0 text-[12px] leading-4 font-medium text-white/80 tabular-nums">
+                -{formatTime(remaining)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={togglePause}
+                aria-label={paused ? 'Play' : 'Pause'}
+                className="flex size-12 items-center justify-center text-white outline-none"
+              >
+                <span className="t-icon-swap" data-state={paused ? 'a' : 'b'}>
+                  <span className="t-icon inline-flex" data-icon="a" aria-hidden={!paused}>
+                    <BigPlayIcon />
+                  </span>
+                  <span className="t-icon inline-flex" data-icon="b" aria-hidden={paused}>
+                    <BigPauseIcon />
+                  </span>
+                </span>
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 pr-1.5">
+                  <IconButton
+                    aria-label={muted || volume === 0 ? 'Unmute' : 'Mute'}
+                    onClick={() => setMuted((m) => !m)}
+                  >
+                    {muted || volume === 0 ? (
+                      <VolumeMuteIcon />
+                    ) : volume < 0.5 ? (
+                      <VolumeHalfIcon />
+                    ) : (
+                      <VolumeFullIcon />
+                    )}
+                  </IconButton>
+                  <VolumeSlider value={muted ? 0 : volume} onChange={handleVolume} />
+                </div>
+                {search.imdbId ? (
+                  <SubtitleMenu
+                    embedded={[]}
+                    selected={selectedSub}
+                    onSelect={selectSub}
+                    style={subStyle}
+                    onStyleChange={setSubStyle}
+                    imdbId={search.imdbId}
+                    mediaType={mediaType}
+                    season={search.season}
+                    episode={search.episode}
+                    hashSettled
+                    onOpenChange={(open) => {
+                      menuOpenRef.current = open
+                      if (!open) poke()
+                    }}
+                    offsetSec={subOffsetSec}
+                    onOffsetChange={setSubOffsetSec}
+                  />
+                ) : null}
                 <IconButton
-                  aria-label={muted || volume === 0 ? 'Unmute' : 'Mute'}
-                  onClick={() => setMuted((m) => !m)}
+                  aria-label={pipActive ? 'Exit picture in picture' : 'Picture in picture'}
+                  onClick={() => void togglePip()}
                 >
-                  {muted || volume === 0 ? (
-                    <VolumeMuteIcon />
-                  ) : volume < 0.5 ? (
-                    <VolumeHalfIcon />
-                  ) : (
-                    <VolumeFullIcon />
-                  )}
+                  <PipIcon />
                 </IconButton>
-                <VolumeSlider value={muted ? 0 : volume} onChange={handleVolume} />
-              </div>
-              {search.imdbId ? (
-                <SubtitleMenu
-                  embedded={[]}
-                  selected={selectedSub}
-                  onSelect={selectSub}
-                  style={subStyle}
-                  onStyleChange={setSubStyle}
-                  imdbId={search.imdbId}
-                  mediaType={mediaType}
-                  season={search.season}
-                  episode={search.episode}
-                  hashSettled
+                <StreamSwitcher
+                  streams={streams}
+                  selectedId={selectedId}
+                  open={switcherOpen}
                   onOpenChange={(open) => {
+                    setSwitcherOpen(open)
                     menuOpenRef.current = open
                     if (!open) poke()
                   }}
-                  offsetSec={subOffsetSec}
-                  onOffsetChange={setSubOffsetSec}
+                  onPick={(s) => {
+                    setSwitcherOpen(false)
+                    menuOpenRef.current = false
+                    switchTo(s)
+                  }}
                 />
-              ) : null}
-              <IconButton
-                aria-label={pipActive ? 'Exit picture in picture' : 'Picture in picture'}
-                onClick={() => void togglePip()}
-              >
-                <PipIcon />
-              </IconButton>
-              <StreamSwitcher
-                streams={streams}
-                selectedId={selectedId}
-                open={switcherOpen}
-                onOpenChange={(open) => {
-                  setSwitcherOpen(open)
-                  menuOpenRef.current = open
-                  if (!open) poke()
-                }}
-                onPick={(s) => {
-                  setSwitcherOpen(false)
-                  menuOpenRef.current = false
-                  switchTo(s)
-                }}
-              />
-              <IconButton
-                aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                onClick={toggleFullscreen}
-              >
-                {isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
-              </IconButton>
+                <IconButton
+                  aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                  onClick={toggleFullscreen}
+                >
+                  {isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
+                </IconButton>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </ContextMenu.Trigger>
+      <PlayerContextMenuPopup
+        playbackSpeed={playbackSpeed}
+        onSetSpeed={handleSetSpeed}
+        anime4kValue={anime4kValue}
+        anime4kStatus={anime4kStatus}
+        onSetAnime4k={handleSetAnime4k}
+        onReload={handleReload}
+      />
+    </ContextMenu.Root>
   )
 }
 
