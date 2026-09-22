@@ -310,6 +310,20 @@
   a {
     font-weight: 500;
   }
+  /* One arrow everywhere, links and buttons included, so the page never falls back to the
+     system hand. Hotspot at the arrow's tip. Text fields keep their I-beam. */
+  :root {
+    --cursor: url("/cursor.svg") 5 4, auto;
+  }
+  html,
+  a,
+  button,
+  [role="button"],
+  label,
+  summary,
+  select {
+    cursor: var(--cursor);
+  }
 }
 
 @keyframes soft-blur-in {
