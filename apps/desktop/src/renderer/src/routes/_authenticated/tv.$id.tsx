@@ -245,6 +245,7 @@ function TvPage(): React.JSX.Element {
               name={p.name}
               character={p.character}
               profilePath={p.profile_path}
+              gender={p.gender}
             />
           ))}
         </ScrollSection>

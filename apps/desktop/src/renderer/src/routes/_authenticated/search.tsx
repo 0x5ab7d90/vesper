@@ -109,6 +109,7 @@ function SearchPage(): React.JSX.Element {
                     name={p.name ?? ''}
                     character={p.known_for_department ?? ''}
                     profilePath={p.profile_path ?? null}
+                    gender={p.gender}
                   />
                 ))}
               </ScrollSection>
