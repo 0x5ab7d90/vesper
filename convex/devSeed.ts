@@ -1,7 +1,9 @@
 import { v, type Infer } from 'convex/values'
 import { internal } from './_generated/api'
 import { parseProfileId } from './imdb'
+import type { Doc } from './_generated/dataModel'
 import { internalAction, internalMutation, internalQuery } from './_generated/server'
+import { ensureWatchedItem } from './ratings'
 import { presence } from './presence'
 import { mediaTypeValidator, showcaseItemValidator } from './schema'
 
@@ -649,5 +651,194 @@ export const clearFavorites = internalMutation({
     }
     await ctx.db.patch(profile._id, { showcase: undefined })
     return { favorites: items }
+  }
+})
+
+// Give a dev user a taste that overlaps someone else's, so the taste match on their profile has
+// something to say: most of `like`'s ratings echoed back (a few off by a star or two), a few
+// top-rated titles `like` has not seen rated highly, some Favorites, and a public Watchlist.
+//   npx convex run devSeed:seedTaste '{"username":"sicem","like":"0x5ab7d90"}'
+const seedTitleValidator = v.object({
+  mediaType: mediaTypeValidator,
+  tmdbId: v.number(),
+  title: v.string(),
+  posterPath: v.optional(v.string())
+})
+type SeedTitle = Infer<typeof seedTitleValidator>
+
+// Stars added to each echoed rating, in turn: mostly agreement, some drift, one real clash.
+const DRIFT = [0, 0, 1, 0, -1, 0, 0, -2, 1, 0, 0, -1]
+
+export const tasteSource = internalQuery({
+  args: { username: v.string() },
+  handler: async (ctx, { username }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const items = async (kind: 'liked' | 'watched') => {
+      const list = await ctx.db
+        .query('lists')
+        .withIndex('by_userId_and_kind', (q) => q.eq('userId', profile.userId).eq('kind', kind))
+        .unique()
+      if (!list) return []
+      const rows = await ctx.db
+        .query('listItems')
+        .withIndex('by_listId', (q) => q.eq('listId', list._id))
+        .collect()
+      return rows.map(({ mediaType, tmdbId, title, posterPath }) => ({
+        mediaType,
+        tmdbId,
+        title,
+        posterPath
+      }))
+    }
+    const [watched, favorites] = await Promise.all([items('watched'), items('liked')])
+    const ratings = await ctx.db
+      .query('ratings')
+      .withIndex('by_userId', (q) => q.eq('userId', profile.userId))
+      .order('desc')
+      .take(40)
+    const byKey = new Map(watched.map((w) => [`${w.mediaType}:${w.tmdbId}`, w]))
+    return {
+      watched: [...byKey.keys()],
+      favorites,
+      ratings: ratings.flatMap((r) => {
+        const item = byKey.get(`${r.mediaType}:${r.tmdbId}`)
+        return item?.posterPath ? [{ ...item, score: r.score }] : []
+      })
+    }
+  }
+})
+
+export const seedTaste = internalAction({
+  args: { username: v.string(), like: v.string() },
+  handler: async (
+    ctx,
+    { username, like }
+  ): Promise<{ ratings: number; favorites: number; watchlist: number }> => {
+    const key = (process.env.TMDB_API_KEYS ?? process.env.TMDB_API_KEY ?? '').split(',')[0]?.trim()
+    if (!key) throw new Error('No TMDB key on this deployment')
+    const source = await ctx.runQuery(internal.devSeed.tasteSource, { username: like })
+    const seen = new Set(source.watched)
+
+    // Well-liked titles `like` has not watched, alternating movies and shows.
+    const topRated = async (mediaType: 'movie' | 'tv'): Promise<SeedTitle[]> => {
+      const url = new URL(`https://api.themoviedb.org/3/${mediaType}/top_rated`)
+      url.searchParams.set('api_key', key)
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`TMDB ${res.status} for ${mediaType}/top_rated`)
+      const data = (await res.json()) as {
+        results: Array<{ id: number; title?: string; name?: string; poster_path?: string | null }>
+      }
+      return data.results
+        .filter((r) => r.poster_path && !seen.has(`${mediaType}:${r.id}`))
+        .map((r) => ({
+          mediaType,
+          tmdbId: r.id,
+          title: r.title ?? r.name ?? String(r.id),
+          posterPath: r.poster_path ?? undefined
+        }))
+    }
+    const [movies, shows] = await Promise.all([topRated('movie'), topRated('tv')])
+    const fresh = movies.flatMap((m, i) => (shows[i] ? [m, shows[i]] : [m]))
+
+    const echoed = source.ratings.slice(0, 16).map((r, i) => ({
+      ...r,
+      score: Math.min(5, Math.max(1, r.score + DRIFT[i % DRIFT.length]!))
+    }))
+    const loved = fresh.slice(0, 6).map((t) => ({ ...t, score: 5 }))
+    const favorites = [
+      ...source.favorites.filter((f) => f.posterPath).slice(0, 3),
+      ...fresh.slice(0, 3)
+    ]
+    // Titles `like` favorited without rating still get compared, since a favorite reads as five.
+    return await ctx.runMutation(internal.devSeed.applyTaste, {
+      username,
+      ratings: [...echoed, ...loved],
+      favorites,
+      watchlist: fresh.slice(6, 16)
+    })
+  }
+})
+
+export const applyTaste = internalMutation({
+  args: {
+    username: v.string(),
+    ratings: v.array(v.object({ ...seedTitleValidator.fields, score: v.number() })),
+    favorites: v.array(seedTitleValidator),
+    watchlist: v.array(seedTitleValidator)
+  },
+  handler: async (ctx, { username, ratings, favorites, watchlist }) => {
+    const profile = await ctx.db
+      .query('profiles')
+      .withIndex('by_username', (q) => q.eq('username', username))
+      .unique()
+    if (!profile) throw new Error(`No profile for @${username}`)
+    const userId = profile.userId
+    const now = Date.now()
+
+    for (const { score, ...t } of ratings) {
+      const existing = await ctx.db
+        .query('ratings')
+        .withIndex('by_user_and_media', (q) =>
+          q.eq('userId', userId).eq('mediaType', t.mediaType).eq('tmdbId', t.tmdbId)
+        )
+        .unique()
+      if (existing) await ctx.db.patch(existing._id, { score, updatedAt: now })
+      else
+        await ctx.db.insert('ratings', {
+          userId,
+          mediaType: t.mediaType,
+          tmdbId: t.tmdbId,
+          score,
+          createdAt: now,
+          updatedAt: now
+        })
+      await ensureWatchedItem(ctx, userId, t.mediaType, t.tmdbId, t.title, t.posterPath)
+    }
+
+    const fill = async (list: Doc<'lists'>, items: SeedTitle[]): Promise<number> => {
+      let added = 0
+      for (const t of items) {
+        const dupe = await ctx.db
+          .query('listItems')
+          .withIndex('by_listId_and_media', (q) =>
+            q.eq('listId', list._id).eq('mediaType', t.mediaType).eq('tmdbId', t.tmdbId)
+          )
+          .unique()
+        if (dupe) continue
+        await ctx.db.insert('listItems', { listId: list._id, addedBy: userId, addedAt: now, ...t })
+        added += 1
+      }
+      await ctx.db.patch(list._id, { itemCount: list.itemCount + added, lastItemAddedAt: now })
+      return added
+    }
+    const listOf = async (kind: 'liked' | 'custom', name: string): Promise<Doc<'lists'>> => {
+      const existing = (
+        await ctx.db
+          .query('lists')
+          .withIndex('by_userId_and_kind', (q) => q.eq('userId', userId).eq('kind', kind))
+          .collect()
+      ).find((l) => kind === 'liked' || l.name === name)
+      if (existing) return existing
+      const id = await ctx.db.insert('lists', {
+        userId,
+        name,
+        kind,
+        visibility: kind === 'liked' ? 'private' : 'public',
+        locked: kind === 'liked',
+        itemCount: 0,
+        createdAt: now
+      })
+      return (await ctx.db.get(id))!
+    }
+
+    return {
+      ratings: ratings.length,
+      favorites: await fill(await listOf('liked', 'Favorites'), favorites),
+      watchlist: await fill(await listOf('custom', 'Watchlist'), watchlist)
+    }
   }
 })
