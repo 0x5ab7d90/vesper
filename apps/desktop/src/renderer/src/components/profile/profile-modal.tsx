@@ -17,6 +17,7 @@ import { Showcase } from '@renderer/components/profile/showcase'
 import { Badges } from '@renderer/components/profile/badges'
 import { ListsEmptyArt } from '@renderer/components/profile/empty-art'
 import { StatsTab } from '@renderer/components/profile/stats-tab'
+import { TasteMatch, type TasteMatchData } from '@renderer/components/profile/taste-match'
 import { BANNER_PALETTES } from '@renderer/lib/banner-palettes'
 import { closeProfile, useProfileModalUsername } from '@renderer/lib/profile-modal'
 import { tmdbImage } from '@renderer/lib/tmdb'
@@ -67,11 +68,15 @@ function ProfileBody({ username }: { username: string }): React.JSX.Element {
     api.friendships.stateWith,
     profile && me !== undefined && !isMe ? { otherUserId: profile.userId } : 'skip'
   )
+  const taste = useQuery(
+    api.tasteMatch.withUsername,
+    profile && me !== undefined && !isMe ? { username } : 'skip'
+  )
   const identityLoading =
     profile === undefined ||
     now === undefined ||
     me === undefined ||
-    (profile !== null && !isMe && friendState === undefined)
+    (profile !== null && !isMe && (friendState === undefined || taste === undefined))
 
   return (
     <motion.div
@@ -89,7 +94,13 @@ function ProfileBody({ username }: { username: string }): React.JSX.Element {
         ) : profile === null ? (
           <NotFound username={username} />
         ) : (
-          <Identity profile={profile} now={now} isMe={isMe} friendState={friendState ?? null} />
+          <Identity
+            profile={profile}
+            now={now}
+            isMe={isMe}
+            friendState={friendState ?? null}
+            taste={taste ?? null}
+          />
         )}
       </SquircleSurface>
 
@@ -161,12 +172,14 @@ function Identity({
   profile,
   now,
   isMe,
-  friendState
+  friendState,
+  taste
 }: {
   profile: Doc<'profiles'>
   now: NowPlayingData
   isMe: boolean
   friendState: FriendState | null
+  taste: TasteMatchData
 }): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
@@ -205,6 +218,7 @@ function Identity({
         </div>
         <NowPlaying now={now} />
         <Showcase profile={profile} isMe={isMe} />
+        <TasteMatch match={taste} />
         {!isMe && friendState ? (
           <div className="mt-auto">
             <FriendAction otherUserId={profile.userId} state={friendState} />

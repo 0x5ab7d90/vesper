@@ -92,7 +92,7 @@ function Slot({
   )
 }
 
-function VisitorSlot({ item }: { item: ShowcaseItem }): React.JSX.Element {
+export function VisitorSlot({ item }: { item: ShowcaseItem }): React.JSX.Element {
   const navigate = useNavigate()
   return (
     <Slot

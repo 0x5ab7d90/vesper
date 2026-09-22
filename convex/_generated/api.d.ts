@@ -30,6 +30,7 @@ import type * as search from "../search.js";
 import type * as seriesgraph from "../seriesgraph.js";
 import type * as stats from "../stats.js";
 import type * as statsCompute from "../statsCompute.js";
+import type * as tasteMatch from "../tasteMatch.js";
 import type * as tmdb from "../tmdb.js";
 import type * as trakt from "../trakt.js";
 import type * as uploads from "../uploads.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   seriesgraph: typeof seriesgraph;
   stats: typeof stats;
   statsCompute: typeof statsCompute;
+  tasteMatch: typeof tasteMatch;
   tmdb: typeof tmdb;
   trakt: typeof trakt;
   uploads: typeof uploads;
