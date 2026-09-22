@@ -57,7 +57,7 @@ async function profileByUsername(ctx: QueryCtx, username: string): Promise<Doc<'
 
 /** Same gate as recentlyWatchedByUsername: hidden activity, hidden profiles, and
  *  friends-only profiles you are not friends with all read as "nothing to show". */
-async function canViewActivity(ctx: QueryCtx, profile: Doc<'profiles'>): Promise<boolean> {
+export async function canViewActivity(ctx: QueryCtx, profile: Doc<'profiles'>): Promise<boolean> {
   if (profile.hideActivity) return false
   const visibility = profile.visibility ?? 'public'
   if (visibility === 'hidden') return false
