@@ -6,14 +6,10 @@ import { api } from '@convex/_generated/api'
 export type TasteMatchData = FunctionReturnType<typeof api.tasteMatch.withUsername>
 type Match = NonNullable<TasteMatchData>
 
-function titlesPhrase(n: number): string {
-  return n === 1 ? '1 title' : `${n} titles`
-}
-
 /**
- * How your ratings line up with this person's, on someone else's card. A score once you have
- * rated enough of the same titles, then what you both love. Renders nothing on your own card
- * or when their activity is hidden.
+ * How your ratings line up with this person's, on someone else's card, then what you both
+ * love. Renders nothing on your own card, when their activity is hidden, or until you have
+ * rated enough of the same titles for a score.
  */
 export function TasteMatch({ match }: { match: TasteMatchData }): React.JSX.Element | null {
   if (!match) return null
@@ -24,33 +20,11 @@ export function TasteMatch({ match }: { match: TasteMatchData }): React.JSX.Elem
         className="flex flex-col gap-3 bg-surface-2 p-3 shadow-edge"
         style={squircleStyle('inset-sm')}
       >
-        <Score match={match} />
+        <span className="text-[22px] leading-7 font-medium tracking-[-0.01em] text-text tabular-nums">
+          {match.percent}%
+        </span>
         <Shared titles={match.shared} />
       </div>
-    </div>
-  )
-}
-
-function Score({ match }: { match: Match }): React.JSX.Element {
-  if (match.percent === null) {
-    return (
-      <p className="text-[12px] leading-4 font-medium text-text-tertiary">
-        {match.compared === 0
-          ? 'Rate some titles you have both seen to get a score.'
-          : `You've both rated ${titlesPhrase(match.compared)}. A few more and there's a score.`}
-      </p>
-    )
-  }
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[22px] leading-7 font-medium tracking-[-0.01em] text-text tabular-nums">
-        {match.percent}%
-      </span>
-      {match.inCommon > match.compared ? (
-        <span className="text-[11px] leading-4 font-medium text-text-muted tabular-nums">
-          {titlesPhrase(match.inCommon)} watched in common
-        </span>
-      ) : null}
     </div>
   )
 }

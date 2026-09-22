@@ -4,7 +4,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
 import { canViewActivity } from './stats'
 
-// Fewer titles compared than this and a percentage would be noise, so the card says so instead.
+// Fewer titles compared than this and a percentage would be noise, so the card leaves it out.
 const MIN_COMPARED = 3
 // The score is pulled toward this by PRIOR_WEIGHT imaginary titles, so three perfect agreements
 // read as a strong match rather than a flat 100%.
@@ -114,17 +114,9 @@ export const withUsername = query({
       }
     }
 
-    let inCommon = 0
-    const [small, large] = a.watched.size <= b.watched.size ? [a, b] : [b, a]
-    for (const key of small.watched.keys()) if (large.watched.has(key)) inCommon += 1
-
+    if (compared < MIN_COMPARED) return null
     return {
-      percent:
-        compared < MIN_COMPARED
-          ? null
-          : Math.round((100 * (agreement + PRIOR * PRIOR_WEIGHT)) / (compared + PRIOR_WEIGHT)),
-      compared,
-      inCommon,
+      percent: Math.round((100 * (agreement + PRIOR * PRIOR_WEIGHT)) / (compared + PRIOR_WEIGHT)),
       shared: shared
         .sort((x, y) => y.total - x.total)
         .map((s) => titleFor(s.key))
