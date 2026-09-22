@@ -68,16 +68,6 @@ import {
   type SubtitleStyle
 } from '@renderer/lib/subtitle-prefs'
 import { readAudioPreferredLang, writeAudioLastLang } from '@renderer/lib/audio-prefs'
-import { ensureScrape } from '@renderer/lib/stream-orchestrator'
-import { resolveStreamUrl } from '@renderer/lib/resolve-stream'
-import {
-  isSpiderNoir,
-  filenameVariant,
-  pickVariantStream,
-  readVariantPref,
-  writeVariantPref,
-  type ColorVariant
-} from '@renderer/lib/spider-noir'
 import { useDiscordPresence } from '@renderer/hooks/use-discord-presence'
 import { useKeepAwake } from '@renderer/hooks/use-keep-awake'
 import { api } from '@convex/_generated/api'
@@ -187,18 +177,8 @@ function WatchPage(): React.JSX.Element {
   const [ctxMenuOpen, setCtxMenuOpen] = useState(false)
   const [skipButtonsEnabled] = useState(() => readSkipButtonsEnabled())
 
-  // Spider-Noir B&W/color toggle. The button only shows for this title; the saved preference is
-  // enforced on load by resolving the matching variant before the player starts (no wrong-variant
-  // flash) — so the engine waits on a null url while a mismatch is being resolved.
-  const spiderNoir = isSpiderNoir(search.imdbId)
-  const currentVariant = filenameVariant(search.filename)
-  const variantPref = spiderNoir ? readVariantPref() : null
-  const mustEnforceVariant = !!variantPref && variantPref !== currentVariant
   const episodeKey = `${search.imdbId}:${search.season}:${search.episode}`
-  // Keyed to the episode so it clears itself on episode change — no reset effect needed.
-  const [enforceFailedKey, setEnforceFailedKey] = useState<string | null>(null)
-  const variantEnforceFailed = enforceFailedKey === episodeKey
-  const playUrl = mustEnforceVariant && !variantEnforceFailed ? null : search.url
+  const playUrl = search.url
 
   // The player stays mounted across an episode change, so both of these are scoped to the episode
   // they were chosen for rather than cleared afterwards — last episode's subtitle has no business
@@ -654,92 +634,6 @@ function WatchPage(): React.JSX.Element {
     return search.season === last.season_number && search.episode === last.episode_count
   }, [search.mediaType, search.season, search.episode, tvDetails.data])
 
-  const variantContext = useMemo(
-    () => ({
-      mediaType: search.mediaType,
-      imdbId: search.imdbId,
-      season: search.season,
-      episode: search.episode,
-      tmdbId
-    }),
-    [search.mediaType, search.imdbId, search.season, search.episode, tmdbId]
-  )
-
-  // Enforce the saved B&W/color preference when an episode loads in the wrong variant. Resolves
-  // the matching cached release and replaces the url; if none is cached, give up and play what
-  // loaded (don't make the viewer wait on a cache job just to open an episode).
-  useEffect(() => {
-    if (!mustEnforceVariant || !variantPref) return
-    let cancelled = false
-    void (async () => {
-      try {
-        const streams = await ensureScrape({
-          mediaType: search.mediaType,
-          imdbId: search.imdbId,
-          season: search.season,
-          episode: search.episode,
-          tmdbId
-        })
-        const pick = pickVariantStream(streams, variantPref)
-        if (!pick) {
-          if (!cancelled) setEnforceFailedKey(episodeKey)
-          return
-        }
-        const url = await resolveStreamUrl({ stream: pick, context: variantContext })
-        if (cancelled) return
-        void navigate({
-          to: '/watch/$mediaType/$id',
-          params,
-          replace: true,
-          search: { ...search, url, filename: pick.filename, bingeGroup: pick.bingeGroup }
-        })
-      } catch (e) {
-        console.error('[variant] enforce failed', e)
-        if (!cancelled) setEnforceFailedKey(episodeKey)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.imdbId, search.season, search.episode])
-
-  const handleToggleVariant = useCallback(async (): Promise<void> => {
-    const target: ColorVariant = currentVariant === 'bw' ? 'color' : 'bw'
-    writeVariantPref(target)
-    flashToast(target === 'bw' ? 'Switching to black & white…' : 'Switching to color…')
-    try {
-      const streams = await ensureScrape({
-        mediaType: search.mediaType,
-        imdbId: search.imdbId,
-        season: search.season,
-        episode: search.episode,
-        tmdbId
-      })
-      const pick = pickVariantStream(streams, target)
-      if (!pick) {
-        flashToast(target === 'bw' ? 'No black & white version found' : 'No color version found')
-        return
-      }
-      const pos = Math.floor(engine.timePos || 0)
-      const url = await resolveStreamUrl({ stream: pick, context: variantContext })
-      void navigate({
-        to: '/watch/$mediaType/$id',
-        params,
-        search: {
-          ...search,
-          url,
-          filename: pick.filename,
-          bingeGroup: pick.bingeGroup,
-          resumeSec: pos
-        }
-      })
-    } catch (e) {
-      console.error('[variant] toggle failed', e)
-      flashToast("Couldn't switch version")
-    }
-  }, [currentVariant, search, tmdbId, params, engine.timePos, flashToast, navigate, variantContext])
-
   const saveProgress = (overrideState?: 'playing' | 'paused' | 'idle'): void => {
     if (!duration) return
     const pos = engine.controllerRef.current?.currentTime ?? timePos
@@ -1146,7 +1040,7 @@ function WatchPage(): React.JSX.Element {
         <BufferOverlay
           backdropUrl={backdropUrl}
           logoUrl={logoUrl}
-          visible={buffering || (mustEnforceVariant && !variantEnforceFailed)}
+          visible={buffering}
           mode={hasFrame ? 'rebuffer' : 'initial'}
         />
         <SubtitleOverlay
@@ -1192,18 +1086,6 @@ function WatchPage(): React.JSX.Element {
             pipActive={pip.active}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
-            variantSlot={
-              spiderNoir ? (
-                <IconButton
-                  aria-label={
-                    currentVariant === 'bw' ? 'Switch to color' : 'Switch to black & white'
-                  }
-                  onClick={() => void handleToggleVariant()}
-                >
-                  <PencilSparkleIcon />
-                </IconButton>
-              ) : null
-            }
             subtitleSlot={
               <SubtitleMenu
                 embedded={embeddedTracks}
@@ -1350,7 +1232,6 @@ function BottomBar({
   pipActive,
   isFullscreen,
   onToggleFullscreen,
-  variantSlot,
   subtitleSlot,
   audioSlot,
   externalPlayerSlot
@@ -1372,7 +1253,6 @@ function BottomBar({
   pipActive: boolean
   isFullscreen: boolean
   onToggleFullscreen: () => void
-  variantSlot?: React.ReactNode
   subtitleSlot?: React.ReactNode
   audioSlot?: React.ReactNode
   externalPlayerSlot?: React.ReactNode
@@ -1436,7 +1316,6 @@ function BottomBar({
               </IconButton>
               <VolumeSlider value={volume} onChange={onVolumeChange} />
             </div>
-            {variantSlot}
             {subtitleSlot ?? (
               <IconButton aria-label="Subtitles">
                 <CcIcon />
@@ -1829,29 +1708,6 @@ function PipIcon(): React.JSX.Element {
     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
       <path d="M3.5 6.75C3.5 6.05 4.05 5.5 4.75 5.5H17.25C17.94 5.5 18.5 6.05 18.5 6.75V11.25C18.5 11.66 18.83 12 19.25 12C19.66 12 20 11.66 20 11.25V6.75C20 5.23 18.76 4 17.25 4H4.75C3.23 4 2 5.23 2 6.75V15.25C2 16.76 3.23 18 4.75 18H9.25C9.66 18 10 17.66 10 17.25C10 16.83 9.66 16.5 9.25 16.5H4.75C4.05 16.5 3.5 15.94 3.5 15.25V6.75Z" />
       <path d="M14.25 14C13.00 14 12 15.00 12 16.25V18.75C12 19.99 13.00 21 14.25 21H19.75C20.99 21 22 19.99 22 18.75V16.25C22 15.00 20.99 14 19.75 14H14.25Z" />
-    </svg>
-  )
-}
-
-function PencilSparkleIcon(): React.JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden>
-      <path
-        d="M8.55934 3.71986C8.62846 3.6853 8.6845 3.62926 8.71906 3.56014L9.17972 2.63883C9.31133 2.3756 9.68698 2.3756 9.81859 2.63883L10.2792 3.56014C10.3138 3.62926 10.3698 3.6853 10.439 3.71986L11.3603 4.18051C11.6235 4.31213 11.6235 4.68778 11.3603 4.81939L10.439 5.28005C10.3698 5.3146 10.3138 5.37065 10.2792 5.43977L9.81859 6.36108C9.68698 6.62431 9.31133 6.62431 9.17972 6.36108L8.71906 5.43977C8.6845 5.37065 8.62846 5.3146 8.55934 5.28005L7.63803 4.81939C7.3748 4.68778 7.3748 4.31213 7.63803 4.18051L8.55934 3.71986Z"
-        fill="currentColor"
-      />
-      <path
-        d="M4.18342 7.40782C4.28018 7.35944 4.35864 7.28098 4.40702 7.18422L5.05194 5.89438C5.2362 5.52586 5.7621 5.52586 5.94637 5.89438L6.59128 7.18422C6.63967 7.28098 6.71813 7.35944 6.81489 7.40782L8.10473 8.05274C8.47325 8.237 8.47325 8.7629 8.10473 8.94717L6.81489 9.59208C6.71813 9.64047 6.63967 9.71893 6.59128 9.81569L5.94637 11.1055C5.7621 11.4741 5.2362 11.4741 5.05194 11.1055L4.40702 9.81569C4.35864 9.71893 4.28018 9.64047 4.18342 9.59208L2.89358 8.94717C2.52506 8.7629 2.52506 8.237 2.89358 8.05274L4.18342 7.40782Z"
-        fill="currentColor"
-      />
-      <path
-        d="M17.9424 3.8672C18.8384 3.08314 20.1889 3.12811 21.0309 3.97004C21.8728 4.81197 21.9178 6.16248 21.1337 7.05855L13.3109 15.999C12.7677 13.891 11.1099 12.2332 9.00195 11.6901L17.9424 3.8672Z"
-        fill="currentColor"
-      />
-      <path
-        d="M3 17.5C3 15.0147 5.01472 13 7.5 13C7.61036 13 7.71991 13.004 7.82852 13.0118C10.0524 13.1727 11.8273 14.9476 11.9882 17.1715C11.996 17.2801 12 17.3896 12 17.5C12 19.9853 9.98528 22 7.5 22H3.75C3.33579 22 3 21.6642 3 21.25V17.5Z"
-        fill="currentColor"
-      />
     </svg>
   )
 }
