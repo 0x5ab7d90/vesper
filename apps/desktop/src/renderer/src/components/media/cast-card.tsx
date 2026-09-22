@@ -8,13 +8,15 @@ export interface CastCardProps {
   name: string
   character: string
   profilePath: string | null
+  gender?: number
 }
 
 export function CastCard({
   personId,
   name,
   character,
-  profilePath
+  profilePath,
+  gender
 }: CastCardProps): React.JSX.Element {
   return (
     <BaseButton
@@ -27,7 +29,8 @@ export function CastCard({
         shape="circle"
         src={tmdbImage(profilePath, 'w185')}
         alt={name}
-        seed={name}
+        fallback="silhouette"
+        gender={gender}
       />
       <div className="flex flex-col gap-0.5">
         <span className="line-clamp-1 text-[13px] leading-4 font-medium text-text">{name}</span>

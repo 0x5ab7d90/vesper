@@ -98,6 +98,7 @@ function PersonBody({ personId }: { personId: number }): React.JSX.Element {
             born={formatBirthLine(details.data)}
             bio={details.data.biography ?? ''}
             profile={tmdbImage(details.data.profile_path, 'h632')}
+            gender={details.data.gender}
             backdrops={backdrops}
           />
         ) : (
@@ -149,12 +150,14 @@ function Identity({
   born,
   bio,
   profile,
+  gender,
   backdrops
 }: {
   name: string
   born: string
   bio: string
   profile: string | undefined
+  gender: number
   backdrops: string[]
 }): React.JSX.Element {
   return (
@@ -168,7 +171,8 @@ function Identity({
             size="2xl"
             className="size-full bg-surface-2"
             alt={name}
-            seed={name}
+            fallback="silhouette"
+            gender={gender}
             src={profile}
           />
         </span>

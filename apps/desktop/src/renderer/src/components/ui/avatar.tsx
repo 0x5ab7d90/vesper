@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { PersonSilhouette } from '@renderer/components/brand/person-silhouette'
 import { DitherAvatar } from '@renderer/components/dither-kit/avatar'
 import { cn } from '@renderer/lib/cn'
 
@@ -35,6 +36,10 @@ type AvatarProps = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt'
     alt?: string
     /** Seeds the generated mark when there is no picture. Falls back to `alt` when missing. */
     seed?: string
+    /** What stands in when there is no picture: the generated mark, or a person's bust. */
+    fallback?: 'mark' | 'silhouette'
+    /** TMDB gender code, picking which bust the silhouette fallback draws. */
+    gender?: number
     ref?: React.Ref<HTMLImageElement>
   }
 
@@ -43,6 +48,8 @@ export function Avatar({
   src,
   alt,
   seed,
+  fallback = 'mark',
+  gender,
   size,
   shape,
   ref,
@@ -51,10 +58,14 @@ export function Avatar({
   const [errored, setErrored] = useState(false)
   const classes = cn(avatarVariants({ size, shape }), className)
 
-  // No picture, or one that failed to load: the same generated mark the rest of the app uses,
-  // seeded by name so an actor with no headshot still looks like themselves every time. Still,
-  // so a cast row of twenty does not all animate at once.
+  // No picture, or one that failed to load. People from TMDB get a bust, which reads as the
+  // headshot that is missing; everyone else gets the generated mark the rest of the app uses,
+  // seeded by name so they look like themselves every time. Still, so a cast row of twenty
+  // does not all animate at once.
   if (!src || errored) {
+    if (fallback === 'silhouette') {
+      return <PersonSilhouette gender={gender} alt={alt} className={classes} />
+    }
     return <DitherAvatar name={seed ?? alt ?? 'vesper'} animate={false} className={classes} />
   }
 

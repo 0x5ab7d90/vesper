@@ -110,6 +110,8 @@ export interface TmdbSearchMultiItem {
   first_air_date?: string
   known_for_department?: string
   known_for?: Array<{ title?: string; name?: string }>
+  /** Only on person results. 0 unknown, 1 female, 2 male, 3 non-binary. */
+  gender?: number
 }
 
 export function searchItemTitle(item: TmdbSearchMultiItem): string {
@@ -144,6 +146,8 @@ export interface TmdbCastMember {
   character: string
   order: number
   profile_path: string | null
+  /** 0 unknown, 1 female, 2 male, 3 non-binary. */
+  gender: number
 }
 
 export interface TmdbCrewMember {
