@@ -1,9 +1,10 @@
 'use node'
 
+import type { FunctionReturnType } from 'convex/server'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
-import { internalAction } from './_generated/server'
+import { internalAction, type ActionCtx } from './_generated/server'
 import { tmdbGet } from './tmdb'
 import { tenToFive } from './trakt'
 
@@ -102,13 +103,18 @@ interface FindResponse {
   tv_results?: { id: number; name?: string; poster_path?: string | null }[]
 }
 
+type CachedMatch = FunctionReturnType<typeof internal.imdb.cachedMatches>[number]
+
 /** Resolve an IMDb title to a Vesper one. IMDb's type only steers which TMDB list to read
- *  first; TMDB's answer is what counts. */
-async function match(title: ImdbTitle): Promise<Omit<Matched, 'score' | 'ratedAt'> | null> {
+ *  first; TMDB's answer is what counts. `null` is TMDB saying it has nothing; `'error'` is
+ *  TMDB not answering. */
+async function match(
+  title: ImdbTitle
+): Promise<Pick<Matched, 'mediaType' | 'tmdbId' | 'title' | 'posterPath'> | null | 'error'> {
   const found = await tmdbGet<FindResponse>(`/find/${title.id}`, {
     external_source: 'imdb_id'
   }).catch(() => null)
-  if (!found) return null
+  if (!found) return 'error'
   const preferTv = TV_TYPES.has(title.titleType?.id ?? '')
   const movie = found.movie_results?.[0]
   const tv = found.tv_results?.[0]
@@ -123,7 +129,12 @@ async function match(title: ImdbTitle): Promise<Omit<Matched, 'score' | 'ratedAt
   }
 }
 
-async function matchAll(rows: Row[]): Promise<{ items: Matched[]; unmatched: Unmatched[] }> {
+/** Match a page of rows. A sync re-reads everything on IMDb, so TMDB only hears about titles
+ *  the shared cache hasn't seen; the rest resolve from there. */
+async function matchAll(
+  ctx: ActionCtx,
+  rows: Row[]
+): Promise<{ items: Matched[]; unmatched: Unmatched[] }> {
   const items: Matched[] = []
   const unmatched: Unmatched[] = []
   const skip = (t: ImdbTitle, reason: string): void => {
@@ -141,13 +152,44 @@ async function matchAll(rows: Row[]): Promise<{ items: Matched[]; unmatched: Unm
     }
     return true
   })
-  for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+
+  const known = new Map(
+    (
+      await ctx.runQuery(internal.imdb.cachedMatches, {
+        imdbIds: candidates.map((r) => r.title.id)
+      })
+    ).map((c) => [c.imdbId, c])
+  )
+  const fresh = candidates.filter((r) => !known.has(r.title.id))
+  const learned: CachedMatch[] = []
+  for (let i = 0; i < fresh.length; i += CONCURRENCY) {
     const batch = await Promise.all(
-      candidates.slice(i, i + CONCURRENCY).map(async (r) => ({ r, m: await match(r.title) }))
+      fresh.slice(i, i + CONCURRENCY).map(async (r) => ({ r, m: await match(r.title) }))
     )
     for (const { r, m } of batch) {
-      if (m) items.push({ ...m, score: r.score, ratedAt: r.ratedAt, addedAt: r.addedAt })
-      else skip(r.title, 'no-match')
+      // A failed lookup isn't a miss; leave it out so the next sync asks again.
+      if (m === 'error') continue
+      const entry: CachedMatch = m ? { imdbId: r.title.id, ...m } : { imdbId: r.title.id }
+      known.set(r.title.id, entry)
+      learned.push(entry)
+    }
+  }
+  if (learned.length > 0) await ctx.runMutation(internal.imdb.rememberMatches, { matches: learned })
+
+  for (const r of candidates) {
+    const c = known.get(r.title.id)
+    if (c?.tmdbId !== undefined && c.mediaType) {
+      items.push({
+        mediaType: c.mediaType,
+        tmdbId: c.tmdbId,
+        title: c.title ?? r.title.titleText?.text ?? '',
+        posterPath: c.posterPath,
+        score: r.score,
+        ratedAt: r.ratedAt,
+        addedAt: r.addedAt
+      })
+    } else {
+      skip(r.title, 'no-match')
     }
   }
   return { items, unmatched }
@@ -282,7 +324,7 @@ export const page = internalAction({
           total: meta.total
         })
       }
-      const { items, unmatched } = await matchAll(rows)
+      const { items, unmatched } = await matchAll(ctx, rows)
       await ctx.runMutation(internal.imdb.applyPage, {
         userId,
         runId,
