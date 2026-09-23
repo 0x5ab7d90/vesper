@@ -187,7 +187,8 @@ export default defineSchema({
   }).index('by_userId', ['userId']),
 
   // One IMDb Import per user: the pasted profile link, the ur id it resolved to, and the
-  // state of the current or most recent run. Imports are one-way and user-triggered.
+  // state of the current or most recent run. One-way: a cron and the app re-run it so new
+  // ratings, watchlist rows and lists on IMDb keep arriving; nothing is written back.
   imdbAccounts: defineTable({
     userId: v.id('users'),
     link: v.string(),
@@ -215,8 +216,24 @@ export default defineSchema({
     // Running tally for the current run, promoted to lastRun when it finishes.
     tally: v.optional(imdbTallyValidator),
     lastRun: v.optional(imdbTallyValidator),
+    // True while the current run is a sync nobody asked for: no progress bar, and a passing
+    // IMDb hiccup leaves the last good state alone.
+    background: v.optional(v.boolean()),
+    // When the current or last run began; paces syncs and spots runs that died mid-way.
+    runStartedAt: v.optional(v.number()),
     createdAt: v.number()
   }).index('by_userId', ['userId']),
+
+  // What each IMDb title resolved to on TMDB, shared across users, so a sync only asks TMDB
+  // about titles it has never seen. A row without tmdbId is a miss, retried once it goes stale.
+  imdbMatches: defineTable({
+    imdbId: v.string(),
+    mediaType: v.optional(mediaTypeValidator),
+    tmdbId: v.optional(v.number()),
+    title: v.optional(v.string()),
+    posterPath: v.optional(v.string()),
+    checkedAt: v.number()
+  }).index('by_imdbId', ['imdbId']),
 
   traktOauthState: defineTable({
     state: v.string(),
