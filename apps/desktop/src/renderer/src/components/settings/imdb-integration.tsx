@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { AnimatePresence, m as motion } from 'motion/react'
 import { api } from '@convex/_generated/api'
@@ -9,18 +9,19 @@ import { Ring } from '@renderer/components/ui/spinner'
 import { TextField } from '@renderer/components/ui/text-field'
 import { cn } from '@renderer/lib/cn'
 
-// The IMDb Import row. One-way and user-triggered: paste a public profile link, Vesper reads
-// the ratings and watchlist it can see, and remembers the link for "Import again". Nothing is
-// ever written back to IMDb.
+// The IMDb row. One-way: paste a public profile link, Vesper imports the ratings, watchlist
+// and lists it can see, then keeps syncing them (see useImdbSync and the imdb cron). Nothing
+// is ever written back to IMDb.
 
 const PANEL = { type: 'spring', stiffness: 550, damping: 38 } as const
 
+// Syncs retry on their own, so the ways out say so.
 const ERRORS = {
   'not-found': "That profile couldn't be found. Check the link and try again.",
   private:
-    'Nothing on that profile is public. Make your ratings or watchlist public on IMDb, then import again.',
-  unavailable: 'IMDb import is unavailable right now. Try again later.',
-  failed: 'Something went wrong partway through. Import again to pick up the rest.'
+    'Nothing on that profile is public. Make your ratings or watchlist public on IMDb and Vesper will pick them up.',
+  unavailable: "IMDb isn't answering right now. Vesper will try again on its own.",
+  failed: 'Something went wrong partway through. Sync now to pick up the rest.'
 } as const
 
 export function ImdbIntegration(): React.JSX.Element {
@@ -29,26 +30,6 @@ export function ImdbIntegration(): React.JSX.Element {
   const runAgain = useMutation(api.imdb.runAgain)
   const disconnect = useMutation(api.imdb.disconnect)
   const addLists = useMutation(api.imdb.addLists)
-  const markListsBlocked = useMutation(api.imdb.markListsBlocked)
-
-  // Once the profile resolves, read the user's public lists page in a hidden window — the API
-  // won't list them. One attempt per account; a block leaves the row offering paste instead.
-  const discovering = useRef<string | null>(null)
-  const imdbUserId = connection?.imdbUserId
-  const needsDiscovery = !!connection && connection.listsDiscovery === undefined && !!imdbUserId
-  useEffect(() => {
-    if (!needsDiscovery || !imdbUserId || discovering.current === imdbUserId) return
-    discovering.current = imdbUserId
-    const discover = window.api.imdb?.discoverLists
-    if (!discover) return
-    discover(imdbUserId)
-      .then((ids) =>
-        ids === null
-          ? markListsBlocked()
-          : addLists({ imdbListIds: ids, source: 'discovered' }).then(() => undefined)
-      )
-      .catch(() => markListsBlocked())
-  }, [needsDiscovery, imdbUserId, addLists, markListsBlocked])
 
   const [editing, setEditing] = useState(false)
   const [link, setLink] = useState('')
@@ -85,7 +66,7 @@ export function ImdbIntegration(): React.JSX.Element {
         <Row
           icon={icon}
           title="IMDb"
-          description="Import ratings and your watchlist from a public IMDb profile."
+          description="Bring in ratings, your watchlist and lists from a public IMDb profile, and keep them coming."
           trailing={
             <Button
               variant="secondary"
@@ -93,7 +74,7 @@ export function ImdbIntegration(): React.JSX.Element {
               className="shrink-0 rounded-md"
               onClick={() => setEditing((v) => !v)}
             >
-              Import
+              Connect
             </Button>
           }
         />
@@ -123,7 +104,7 @@ export function ImdbIntegration(): React.JSX.Element {
                 disabled={submitting || link.trim().length === 0}
               >
                 {submitting ? <Ring className="size-3.5" /> : null}
-                Start import
+                Connect
               </Button>
               <Button
                 variant="ghost"
@@ -144,6 +125,8 @@ export function ImdbIntegration(): React.JSX.Element {
   }
 
   const running = connection.status === 'running'
+  // An import someone is watching gets the progress bar; a sync keeps the summary on show.
+  const importing = running && !connection.syncing
   const who = connection.nickName ?? connection.imdbUserId ?? 'IMDb'
   const profileUrl = connection.imdbUserId
     ? `https://www.imdb.com/user/${connection.imdbUserId}/`
@@ -155,11 +138,11 @@ export function ImdbIntegration(): React.JSX.Element {
         icon={icon}
         title="IMDb"
         description={
-          running ? (
+          importing ? (
             'Importing…'
           ) : (
             <>
-              Importing from{' '}
+              Syncing from{' '}
               <button
                 type="button"
                 onClick={() => window.open(profileUrl, '_blank', 'noopener,noreferrer')}
@@ -180,7 +163,7 @@ export function ImdbIntegration(): React.JSX.Element {
               onClick={() => void runAgain().catch(() => undefined)}
             >
               {running ? <Ring className="size-3.5" /> : null}
-              {running ? 'Importing' : 'Import again'}
+              {importing ? 'Importing' : running ? 'Syncing' : 'Sync now'}
             </Button>
             <Button
               variant="ghost"
@@ -194,9 +177,9 @@ export function ImdbIntegration(): React.JSX.Element {
         }
       />
       <div className="flex flex-col bg-white/[0.015]">
-        {running ? (
+        {importing ? (
           <Progress progress={connection.progress} />
-        ) : connection.status === 'failed' && connection.error ? (
+        ) : connection.error && (connection.status === 'failed' || running) ? (
           <p className="py-3 pr-1 pl-[46px] text-[12px] leading-4 font-medium text-text-tertiary">
             {ERRORS[connection.error]}
           </p>
@@ -268,7 +251,7 @@ function Summary({
           </>
         ) : null}
         {run.finishedAt ? (
-          <span className="ml-auto shrink-0 text-text-muted">{ago(run.finishedAt)}</span>
+          <span className="ml-auto shrink-0 text-text-muted">Synced {ago(run.finishedAt)}</span>
         ) : null}
       </div>
       <Reveal open={open}>
@@ -325,7 +308,7 @@ function AddList({
     <div className="flex flex-col border-t border-white/[0.05] py-3 pr-1 pl-[46px]">
       <div className="flex items-center justify-between gap-4">
         <span className="text-[12px] leading-4 font-medium text-text-muted">
-          IMDb wouldn&apos;t show your lists page. Paste a list link to import it.
+          IMDb wouldn&apos;t show your lists page. Paste a list link to sync it.
         </span>
         <Button
           variant="ghost"
@@ -361,7 +344,7 @@ function AddList({
               disabled={busy || value.trim().length === 0}
             >
               {busy ? <Ring className="size-3.5" /> : null}
-              Import list
+              Add list
             </Button>
             <Button
               variant="ghost"
