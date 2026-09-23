@@ -8,6 +8,7 @@ import { RightSidebar } from '@renderer/components/layout/right-sidebar'
 import { PersonModal } from '@renderer/components/media/person-modal'
 import { ProfileModal } from '@renderer/components/profile/profile-modal'
 import { popularMoviesQuery, trendingTvQuery } from '@renderer/lib/tmdb-queries'
+import { useImdbSync } from '@renderer/hooks/use-imdb-sync'
 import { usePersistedState } from '@renderer/hooks/use-persisted-state'
 import { useSmoothScroll } from '@renderer/hooks/use-smooth-scroll'
 import { ScrollContainerContext } from '@renderer/lib/scroll-container'
@@ -108,6 +109,7 @@ function AuthedLayout(): React.JSX.Element {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   const lenisRef = useSmoothScroll(scrollRef, scrollContentRef)
+  useImdbSync()
 
   useEffect(() => {
     // Lenis keeps its own scroll target; jumping the element directly would snap back.
