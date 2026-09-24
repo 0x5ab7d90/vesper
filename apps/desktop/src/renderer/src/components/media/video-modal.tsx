@@ -1,25 +1,32 @@
 import { Dialog } from '@base-ui/react/dialog'
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
+import { cn } from '@renderer/lib/cn'
 
 interface VideoModalProps {
   ytKey: string | null
   title: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Overrides the player's width; Big Picture plays trailers larger. */
+  className?: string
 }
 
 export function VideoModal({
   ytKey,
   title,
   open,
-  onOpenChange
+  onOpenChange,
+  className
 }: VideoModalProps): React.JSX.Element {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md" />
         <Dialog.Popup
-          className="fixed top-1/2 left-1/2 z-50 w-[min(1100px,90vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden bg-black shadow-2xl"
+          className={cn(
+            'fixed top-1/2 left-1/2 z-50 w-[min(1100px,90vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden bg-black shadow-2xl',
+            className
+          )}
           style={squircleStyle('frame')}
           aria-label={title}
         >

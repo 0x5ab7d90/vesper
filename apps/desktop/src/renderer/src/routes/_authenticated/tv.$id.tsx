@@ -29,6 +29,8 @@ import { EpisodeRatings } from '@renderer/components/media/episode-ratings'
 import { fetchSeriesStreams } from '@renderer/lib/streams'
 import { formatTimeLeft } from '@renderer/lib/next-episode'
 import { api } from '@convex/_generated/api'
+import { useTvMode } from '@renderer/lib/tv-mode'
+import { TvEpisodes, TvTitle } from '@renderer/components/tv/tv-title'
 import {
   formatRuntime,
   pickEnglishLogo,
@@ -133,6 +135,7 @@ function TvPage(): React.JSX.Element {
       id: s.id,
       title: s.name,
       poster: tmdbImage(s.poster_path, 'w342') ?? '',
+      posterPath: s.poster_path ?? undefined,
       type: 'tv' as const
     })) ?? []
 
@@ -149,6 +152,7 @@ function TvPage(): React.JSX.Element {
     episodeName?: string
   } | null>(initialOverride)
   const navigate = useNavigate()
+  const tvMode = useTvMode()
 
   const progressRows = useConvexQuery(api.playback.listForSeries, imdbId ? { imdbId } : 'skip')
 
@@ -212,6 +216,74 @@ function TvPage(): React.JSX.Element {
   const isResumeTarget =
     pickerOverride === null && playTarget.state === 'resume' && playTarget.latest !== undefined
 
+  const picker = imdbId ? (
+    <StreamPicker
+      open={pickerOpen}
+      onOpenChange={setPickerOpen}
+      title={`${details.data.name} · ${episodeLabel}`}
+      mediaType="tv"
+      imdbId={imdbId}
+      tmdbId={tvId}
+      season={pickerSeason}
+      episode={pickerEpisode}
+      year={
+        details.data.first_air_date ? Number(details.data.first_air_date.slice(0, 4)) : undefined
+      }
+      onPickedWeb={({ stream }) => {
+        void navigate({
+          to: '/watch-web/$mediaType/$id',
+          params: { mediaType: 'tv', id: String(tvId) },
+          search: {
+            streamId: stream.id,
+            title: details.data.name,
+            episodeLabel,
+            poster: tmdbImage(details.data.poster_path, 'w342') ?? undefined,
+            imdbId,
+            year: details.data.first_air_date
+              ? Number(details.data.first_air_date.slice(0, 4))
+              : undefined,
+            season: pickerSeason,
+            episode: pickerEpisode
+          }
+        })
+      }}
+      onPicked={({ url, stream }) => {
+        void navigate({
+          to: '/watch/$mediaType/$id',
+          params: { mediaType: 'tv', id: String(tvId) },
+          search: {
+            url,
+            title: details.data.name,
+            episodeLabel,
+            imdbId,
+            mediaType: 'tv',
+            season: pickerSeason,
+            episode: pickerEpisode,
+            resumeSec: isResumeTarget ? playTarget.latest?.positionSec : undefined,
+            filename: stream.filename,
+            bingeGroup: stream.bingeGroup
+          }
+        })
+      }}
+    />
+  ) : null
+
+  if (tvMode) {
+    return (
+      <TvTitle hero={heroProps} onPlay={handlePlay} resume={resume} recs={recs} videos={trailers}>
+        <TvEpisodes
+          tvId={tvId}
+          seasons={seasons}
+          season={activeSeason}
+          onSeasonChange={(n) => setSeasonChoice({ tvId, season: n })}
+          progressRows={progressRows ?? null}
+          onPlay={handlePlayEpisode}
+        />
+        {picker}
+      </TvTitle>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-8 pb-8">
       <Hero {...heroProps} onPlay={handlePlay} resume={resume} />
@@ -262,59 +334,7 @@ function TvPage(): React.JSX.Element {
         }}
       />
 
-      {imdbId ? (
-        <StreamPicker
-          open={pickerOpen}
-          onOpenChange={setPickerOpen}
-          title={`${details.data.name} · ${episodeLabel}`}
-          mediaType="tv"
-          imdbId={imdbId}
-          tmdbId={tvId}
-          season={pickerSeason}
-          episode={pickerEpisode}
-          year={
-            details.data.first_air_date
-              ? Number(details.data.first_air_date.slice(0, 4))
-              : undefined
-          }
-          onPickedWeb={({ stream }) => {
-            void navigate({
-              to: '/watch-web/$mediaType/$id',
-              params: { mediaType: 'tv', id: String(tvId) },
-              search: {
-                streamId: stream.id,
-                title: details.data.name,
-                episodeLabel,
-                poster: tmdbImage(details.data.poster_path, 'w342') ?? undefined,
-                imdbId,
-                year: details.data.first_air_date
-                  ? Number(details.data.first_air_date.slice(0, 4))
-                  : undefined,
-                season: pickerSeason,
-                episode: pickerEpisode
-              }
-            })
-          }}
-          onPicked={({ url, stream }) => {
-            void navigate({
-              to: '/watch/$mediaType/$id',
-              params: { mediaType: 'tv', id: String(tvId) },
-              search: {
-                url,
-                title: details.data.name,
-                episodeLabel,
-                imdbId,
-                mediaType: 'tv',
-                season: pickerSeason,
-                episode: pickerEpisode,
-                resumeSec: isResumeTarget ? playTarget.latest?.positionSec : undefined,
-                filename: stream.filename,
-                bingeGroup: stream.bingeGroup
-              }
-            })
-          }}
-        />
-      ) : null}
+      {picker}
     </div>
   )
 }

@@ -14,9 +14,11 @@ import { POPUP_MOTION } from '@renderer/components/ui/popup-motion'
 interface UserMenuProps {
   /** Told whenever the menu opens or closes, so the title bar can give up its drag region. */
   onOpenChange?: (open: boolean) => void
+  /** Sizes the trigger's avatar; Big Picture draws it larger than the title bar does. */
+  avatarClassName?: string
 }
 
-export function UserMenu({ onOpenChange }: UserMenuProps): React.JSX.Element {
+export function UserMenu({ onOpenChange, avatarClassName }: UserMenuProps): React.JSX.Element {
   const navigate = useNavigate()
   const { signOut } = useAuthActions()
   const data = useQuery(api.profiles.me)
@@ -54,7 +56,13 @@ export function UserMenu({ onOpenChange }: UserMenuProps): React.JSX.Element {
         aria-label="Account menu"
         className="inline-flex shrink-0 items-center justify-center rounded-full bg-transparent outline-none"
       >
-        <Avatar size="md" alt={displayName} seed={seed} src={avatarSrc} />
+        <Avatar
+          size="md"
+          alt={displayName}
+          seed={seed}
+          src={avatarSrc}
+          className={avatarClassName}
+        />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={8} className="z-[100]">

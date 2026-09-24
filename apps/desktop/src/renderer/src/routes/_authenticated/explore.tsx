@@ -21,6 +21,8 @@ import {
 import { tmdbImage, type TmdbMovie, type TmdbShow } from '@renderer/lib/tmdb'
 import { cn } from '@renderer/lib/cn'
 import { IMG_OUTLINE } from '@renderer/components/ui/image-outline'
+import { useTvMode } from '@renderer/lib/tv-mode'
+import { TvBrowse } from '@renderer/components/tv/tv-browse'
 
 type ExploreType = 'movie' | 'tv'
 
@@ -54,8 +56,12 @@ export const Route = createFileRoute('/_authenticated/explore')({
       genre: parseGenre(search.genre, type)
     }
   },
-  component: ExplorePage
+  component: ExploreRoute
 })
+
+function ExploreRoute(): React.JSX.Element {
+  return useTvMode() ? <TvBrowse /> : <ExplorePage />
+}
 
 interface ExploreItem {
   id: number

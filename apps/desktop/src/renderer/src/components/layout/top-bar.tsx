@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { IconButton } from '@renderer/components/ui/icon-button'
+import { SimpleTooltip } from '@renderer/components/ui/simple-tooltip'
 import { SearchControl } from '@renderer/components/search/search-popover'
 import { UserMenu } from '@renderer/components/layout/user-menu'
 import {
@@ -8,6 +9,7 @@ import {
   HomeIcon,
   PeopleGroupIcon,
   SidebarLeftIcon,
+  TvIcon,
   WinCloseIcon,
   WinMaximizeIcon,
   WinMinimizeIcon
@@ -15,6 +17,7 @@ import {
 import { useNavigate } from '@tanstack/react-router'
 import { isMac, isWindows } from '@renderer/lib/platform'
 import { useNavState } from '@renderer/lib/use-nav-state'
+import { setTvMode } from '@renderer/lib/tv-mode'
 
 const BUTTON = 32 // IconButton size="md"
 const GAP = 8 // nav gap-2
@@ -57,7 +60,8 @@ export function TopBar({
     winWidth -
     (isWindows ? WIN_CONTROLS_WIDTH : 0) -
     RIGHT_PAD -
-    BUTTON -
+    2 * BUTTON - // Big Picture + avatar
+    GAP -
     (rightCollapsed ? BUTTON + GAP : 0)
   const available = rightStart - navEnd - 2 * SEARCH_GUTTER
   const searchWidth = Math.max(0, Math.min(SEARCH_MAX, available))
@@ -137,6 +141,16 @@ export function TopBar({
             <PeopleGroupIcon className="size-5" />
           </IconButton>
         ) : null}
+        <SimpleTooltip content="Enter Big Picture" side="bottom">
+          <IconButton
+            variant="ghost"
+            size="md"
+            aria-label="Enter Big Picture"
+            onClick={() => setTvMode(true)}
+          >
+            <TvIcon className="size-5" />
+          </IconButton>
+        </SimpleTooltip>
         <UserMenu onOpenChange={setUserMenuOpen} />
       </div>
 
@@ -150,7 +164,7 @@ export function TopBar({
 const WIN_CONTROL =
   'flex size-8 shrink-0 items-center justify-center rounded-[16px] bg-transparent text-text-tertiary outline-none transition-colors duration-150 ease-out active:opacity-70'
 
-function WindowsControls(): React.JSX.Element {
+export function WindowsControls(): React.JSX.Element {
   return (
     <div className="app-no-drag flex shrink-0 items-center gap-1 pr-2.5">
       <button

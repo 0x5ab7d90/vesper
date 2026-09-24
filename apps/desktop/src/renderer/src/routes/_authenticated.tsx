@@ -12,6 +12,8 @@ import { useImdbSync } from '@renderer/hooks/use-imdb-sync'
 import { usePersistedState } from '@renderer/hooks/use-persisted-state'
 import { useSmoothScroll } from '@renderer/hooks/use-smooth-scroll'
 import { ScrollContainerContext } from '@renderer/lib/scroll-container'
+import { useTvMode } from '@renderer/lib/tv-mode'
+import { TvShell } from '@renderer/components/tv/tv-shell'
 import { cn } from '@renderer/lib/cn'
 
 interface ShellLayout {
@@ -80,6 +82,12 @@ export const Route = createFileRoute('/_authenticated')({
 })
 
 function AuthedLayout(): React.JSX.Element {
+  const tvMode = useTvMode()
+  useImdbSync()
+  return tvMode ? <TvShell /> : <DesktopShell />
+}
+
+function DesktopShell(): React.JSX.Element {
   const [layout, setLayout] = usePersistedState<ShellLayout>('vesper.layout.shell', INITIAL)
   const layoutRef = useRef(layout)
   useEffect(() => {
@@ -109,7 +117,6 @@ function AuthedLayout(): React.JSX.Element {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   const lenisRef = useSmoothScroll(scrollRef, scrollContentRef)
-  useImdbSync()
 
   useEffect(() => {
     // Lenis keeps its own scroll target; jumping the element directly would snap back.

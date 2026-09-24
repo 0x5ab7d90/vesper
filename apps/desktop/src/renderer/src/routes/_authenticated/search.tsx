@@ -12,13 +12,19 @@ import { tmdbImage } from '@renderer/lib/tmdb'
 import { openProfile } from '@renderer/lib/profile-modal'
 import { api } from '@convex/_generated/api'
 import type { Doc } from '@convex/_generated/dataModel'
+import { useTvMode } from '@renderer/lib/tv-mode'
+import { TvSearch } from '@renderer/components/tv/tv-search'
 
 export const Route = createFileRoute('/_authenticated/search')({
   validateSearch: (search): { q?: string } => ({
     q: typeof search.q === 'string' ? search.q : undefined
   }),
-  component: SearchPage
+  component: SearchRoute
 })
+
+function SearchRoute(): React.JSX.Element {
+  return useTvMode() ? <TvSearch /> : <SearchPage />
+}
 
 function SearchPage(): React.JSX.Element {
   const { q } = Route.useSearch()

@@ -28,6 +28,8 @@ import { fetchMovieStreams } from '@renderer/lib/streams'
 import { ensureScrape } from '@renderer/lib/stream-orchestrator'
 import { formatTimeLeft } from '@renderer/lib/next-episode'
 import { api } from '@convex/_generated/api'
+import { useTvMode } from '@renderer/lib/tv-mode'
+import { TvTitle } from '@renderer/components/tv/tv-title'
 import {
   formatRuntime,
   pickCertification,
@@ -102,6 +104,7 @@ function MoviePage(): React.JSX.Element {
       id: m.id,
       title: m.title,
       poster: tmdbImage(m.poster_path, 'w342') ?? '',
+      posterPath: m.poster_path ?? undefined,
       type: 'movie' as const
     })) ?? []
 
@@ -109,6 +112,7 @@ function MoviePage(): React.JSX.Element {
   const [openVideo, setOpenVideo] = useState<TmdbVideo | null>(null)
   const [pickerOpen, setPickerOpen] = useState<boolean>(!!search.play)
   const navigate = useNavigate()
+  const tvMode = useTvMode()
 
   const progress = useConvexQuery(api.playback.getForTitle, imdbId ? { imdbId } : 'skip')
 
@@ -130,6 +134,55 @@ function MoviePage(): React.JSX.Element {
   const handlePlay = (): void => {
     if (!imdbId) return
     setPickerOpen(true)
+  }
+
+  const picker = imdbId ? (
+    <StreamPicker
+      open={pickerOpen}
+      onOpenChange={setPickerOpen}
+      title={details.data.title}
+      mediaType="movie"
+      imdbId={imdbId}
+      tmdbId={movieId}
+      year={details.data.release_date ? Number(details.data.release_date.slice(0, 4)) : undefined}
+      onPickedWeb={({ stream }) => {
+        void navigate({
+          to: '/watch-web/$mediaType/$id',
+          params: { mediaType: 'movie', id: String(movieId) },
+          search: {
+            streamId: stream.id,
+            title: details.data.title,
+            poster: tmdbImage(details.data.poster_path, 'w342') ?? undefined,
+            imdbId,
+            year: details.data.release_date
+              ? Number(details.data.release_date.slice(0, 4))
+              : undefined
+          }
+        })
+      }}
+      onPicked={({ url, stream }) => {
+        void navigate({
+          to: '/watch/$mediaType/$id',
+          params: { mediaType: 'movie', id: String(movieId) },
+          search: {
+            url,
+            title: details.data.title,
+            imdbId,
+            mediaType: 'movie',
+            resumeSec: resume ? progress!.positionSec : undefined,
+            filename: stream.filename
+          }
+        })
+      }}
+    />
+  ) : null
+
+  if (tvMode) {
+    return (
+      <TvTitle hero={heroProps} onPlay={handlePlay} resume={resume} recs={recs} videos={trailers}>
+        {picker}
+      </TvTitle>
+    )
   }
 
   return (
@@ -170,48 +223,7 @@ function MoviePage(): React.JSX.Element {
         }}
       />
 
-      {imdbId ? (
-        <StreamPicker
-          open={pickerOpen}
-          onOpenChange={setPickerOpen}
-          title={details.data.title}
-          mediaType="movie"
-          imdbId={imdbId}
-          tmdbId={movieId}
-          year={
-            details.data.release_date ? Number(details.data.release_date.slice(0, 4)) : undefined
-          }
-          onPickedWeb={({ stream }) => {
-            void navigate({
-              to: '/watch-web/$mediaType/$id',
-              params: { mediaType: 'movie', id: String(movieId) },
-              search: {
-                streamId: stream.id,
-                title: details.data.title,
-                poster: tmdbImage(details.data.poster_path, 'w342') ?? undefined,
-                imdbId,
-                year: details.data.release_date
-                  ? Number(details.data.release_date.slice(0, 4))
-                  : undefined
-              }
-            })
-          }}
-          onPicked={({ url, stream }) => {
-            void navigate({
-              to: '/watch/$mediaType/$id',
-              params: { mediaType: 'movie', id: String(movieId) },
-              search: {
-                url,
-                title: details.data.title,
-                imdbId,
-                mediaType: 'movie',
-                resumeSec: resume ? progress!.positionSec : undefined,
-                filename: stream.filename
-              }
-            })
-          }}
-        />
-      ) : null}
+      {picker}
     </div>
   )
 }
