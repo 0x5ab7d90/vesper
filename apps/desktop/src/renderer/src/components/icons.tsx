@@ -599,3 +599,41 @@ export const CheckmarkIcon = (props: IconProps): React.JSX.Element => (
     />
   </svg>
 )
+
+export const TvIcon = (props: IconProps): React.JSX.Element => (
+  <svg {...base} {...props}>
+    <path
+      d="M2.75 5.75C2.75 4.65 3.65 3.75 4.75 3.75H19.25C20.35 3.75 21.25 4.65 21.25 5.75V14.25C21.25 15.35 20.35 16.25 19.25 16.25H4.75C3.65 16.25 2.75 15.35 2.75 14.25V5.75Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M18 20.25C16.11 19.6 14.1 19.25 12 19.25C9.9 19.25 7.89 19.6 6 20.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+export const ClapboardIcon = (props: IconProps): React.JSX.Element => (
+  <svg {...base} {...props}>
+    <path
+      d="M19.25 4.75H4.75C3.65 4.75 2.75 5.65 2.75 6.75V17.25C2.75 18.35 3.65 19.25 4.75 19.25H19.25C20.35 19.25 21.25 18.35 21.25 17.25V6.75C21.25 5.65 20.35 4.75 19.25 4.75Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M3 9.75H21M7.75 9.75L9.75 4.75M14.25 9.75L16.25 4.75"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)

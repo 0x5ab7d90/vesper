@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { useQuery as useConvexQuery } from 'convex/react'
 import { useScrollContainer } from '@renderer/lib/scroll-container'
@@ -9,11 +9,12 @@ import { FightsSection } from '@renderer/components/fights/fights-section'
 import { PosterRow, type PosterRowItem } from '@renderer/components/media/poster-row'
 import { FeaturedCarousel } from '@renderer/components/media/featured-carousel'
 import { ScrollSection } from '@renderer/components/ui/scroll-section'
-import { formatTimeLeft } from '@renderer/lib/next-episode'
 import { MediaContextMenu } from '@renderer/components/library/media-context-menu'
 import { api } from '@convex/_generated/api'
 import { useMutation } from 'convex/react'
-import type { FunctionReturnType } from 'convex/server'
+import { useContinueRow, type ContinueRow } from '@renderer/hooks/use-continue-row'
+import { useTvMode } from '@renderer/lib/tv-mode'
+import { TvHome } from '@renderer/components/tv/tv-home'
 import {
   trendingMoviesQuery,
   trendingAllQuery,
@@ -23,16 +24,14 @@ import {
   movieDetailsQuery,
   type GenreKey
 } from '@renderer/lib/tmdb-queries'
+import { GENRE_ROWS } from '@renderer/lib/home-rows'
 import {
   fanartMovieQuery,
-  fanartTvQuery,
   imdbRatingsQuery,
   pickMovieHeroLogo,
-  preloadImage,
-  tvExternalIdsQuery
+  preloadImage
 } from '@renderer/lib/external-queries'
 import type { FanartMovie } from '@renderer/lib/fanart'
-import { pickFanartLogo } from '@renderer/lib/fanart'
 import {
   tmdbImage,
   trendingItemTitle,
@@ -43,28 +42,6 @@ import {
 
 const PREFETCH_TIMEOUT_MS = 1500
 const CONTINUE_COUNT = 10
-
-const GENRE_ROWS: { key: GenreKey; title: string }[] = [
-  { key: 'scifi', title: 'Sci-Fi' },
-  { key: 'horror', title: 'Horror' },
-  { key: 'comedy', title: 'Comedy' },
-  { key: 'animation', title: 'Animation' },
-  { key: 'drama', title: 'Drama' },
-  { key: 'action', title: 'Action' },
-  { key: 'thriller', title: 'Thriller' },
-  { key: 'romance', title: 'Romance' },
-  { key: 'fantasy', title: 'Fantasy' },
-  { key: 'crime', title: 'Crime' },
-  { key: 'mystery', title: 'Mystery' },
-  { key: 'adventure', title: 'Adventure' },
-  { key: 'family', title: 'Family' }
-]
-
-type ContinueRow = FunctionReturnType<typeof api.playback.listContinueWatching>[number]
-
-function pad(n: number): string {
-  return n < 10 ? `0${n}` : String(n)
-}
 
 function timeout(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -103,8 +80,12 @@ export const Route = createFileRoute('/_authenticated/')({
     const heroId = trendingMovies.results[0]?.id ?? 0
     await Promise.race([prefetchHero(qc, heroId), timeout(PREFETCH_TIMEOUT_MS)])
   },
-  component: HomePage
+  component: HomeRoute
 })
+
+function HomeRoute(): React.JSX.Element {
+  return useTvMode() ? <TvHome /> : <HomePage />
+}
 
 function movieToPoster(m: TmdbMovie): PosterRowItem {
   return {
@@ -259,53 +240,8 @@ function ContinueWatchingSection(): React.JSX.Element | null {
 }
 
 function ContinueRowCard({ row }: { row: ContinueRow }): React.JSX.Element {
-  const navigate = useNavigate()
   const removeProgress = useMutation(api.playback.remove)
-
-  const isMovie = row.mediaType === 'movie'
-  const movieFanart = useQuery({ ...fanartMovieQuery(row.imdbId), enabled: isMovie })
-  const ext = useQuery({ ...tvExternalIdsQuery(row.tmdbId), enabled: !isMovie })
-  const tvdbId = ext.data?.tvdb_id ?? undefined
-  const tvFanart = useQuery({ ...fanartTvQuery(tvdbId), enabled: !isMovie && !!tvdbId })
-
-  const logo = isMovie
-    ? pickFanartLogo(movieFanart.data?.hdmovielogo ?? movieFanart.data?.movielogo ?? undefined)
-    : pickFanartLogo(tvFanart.data?.clearlogo ?? tvFanart.data?.hdtvlogo ?? undefined)
-
-  const backdrop = tmdbImage(row.backdropPath, 'w780') ?? ''
-  const timeLeft = formatTimeLeft(row.positionSec, row.durationSec)
-  const seasonEp =
-    !isMovie && row.season !== undefined && row.episode !== undefined
-      ? `S${pad(row.season)}E${pad(row.episode)}`
-      : null
-  const remaining = seasonEp ? `${seasonEp} · ${timeLeft}` : timeLeft
-  const progress = row.durationSec > 0 ? (row.positionSec / row.durationSec) * 100 : 0
-
-  const detailTarget = isMovie
-    ? ({ to: '/movie/$id', params: { id: String(row.tmdbId ?? 0) } } as const)
-    : ({ to: '/tv/$id', params: { id: String(row.tmdbId ?? 0) } } as const)
-
-  const handleClick = (): void => {
-    if (row.streamUrl && row.tmdbId) {
-      navigate({
-        to: '/watch/$mediaType/$id',
-        params: { mediaType: row.mediaType, id: String(row.tmdbId) },
-        search: {
-          url: row.streamUrl,
-          title: row.title ?? '',
-          episodeLabel: row.episodeLabel,
-          imdbId: row.imdbId,
-          mediaType: row.mediaType,
-          season: row.season,
-          episode: row.episode,
-          resumeSec: row.positionSec
-        },
-        viewTransition: false
-      })
-      return
-    }
-    navigate({ ...detailTarget, viewTransition: false })
-  }
+  const view = useContinueRow(row, 'w780')
 
   return (
     <MediaContextMenu
@@ -313,7 +249,7 @@ function ContinueRowCard({ row }: { row: ContinueRow }): React.JSX.Element {
       tmdbId={row.tmdbId ?? 0}
       title={row.title ?? ''}
       posterPath={row.posterPath ?? undefined}
-      onPlay={handleClick}
+      onPlay={view.resume}
       onRemove={() =>
         void removeProgress({
           imdbId: row.imdbId,
@@ -325,12 +261,12 @@ function ContinueRowCard({ row }: { row: ContinueRow }): React.JSX.Element {
     >
       <ContinueCard
         title={row.title ?? ''}
-        backdrop={backdrop}
-        logo={logo}
-        remaining={remaining}
-        progress={progress}
-        onClick={handleClick}
-        preload={detailTarget}
+        backdrop={view.backdrop}
+        logo={view.logo}
+        remaining={view.remaining}
+        progress={view.progress}
+        onClick={view.resume}
+        preload={view.detailTarget}
       />
     </MediaContextMenu>
   )

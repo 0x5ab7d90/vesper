@@ -4,14 +4,40 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@renderer/components/icons'
 
 interface Props {
   scrollRef: React.RefObject<HTMLDivElement | null>
+  /**
+   * `tv` and `tv-compact` are Big Picture's: bigger targets that stay visible, since at ten feet
+   * nobody goes hunting for a control that only shows on hover. Compact sits on pill rows.
+   */
+  size?: keyof typeof SIZES
 }
+
+const SIZES = {
+  md: {
+    button: 'size-9 opacity-0 group-hover:opacity-100',
+    icon: 'size-4',
+    start: 'left-2',
+    end: 'right-2'
+  },
+  tv: {
+    button: 'size-16 opacity-60 group-hover:opacity-100 hover:bg-black/80',
+    icon: 'size-7',
+    start: 'left-6',
+    end: 'right-6'
+  },
+  'tv-compact': {
+    button: 'size-12 opacity-70 group-hover:opacity-100 hover:bg-black/80',
+    icon: 'size-6',
+    start: 'left-4',
+    end: 'right-4'
+  }
+} as const
 
 const HOLD_THRESHOLD_MS = 200
 const HOLD_RAMP_MS = 300
 const HOLD_MIN_PX = 8
 const HOLD_MAX_PX = 80
 
-export function ScrollChevrons({ scrollRef }: Props): React.JSX.Element {
+export function ScrollChevrons({ scrollRef, size = 'md' }: Props): React.JSX.Element {
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(false)
 
@@ -105,8 +131,10 @@ export function ScrollChevrons({ scrollRef }: Props): React.JSX.Element {
   }, [endPress])
 
   const base = cn(
-    'absolute top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-hover:backdrop-blur-md active:scale-95'
+    'absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition-opacity duration-150 group-hover:backdrop-blur-md active:scale-95',
+    SIZES[size].button
   )
+  const icon = SIZES[size].icon
 
   return (
     <>
@@ -118,9 +146,9 @@ export function ScrollChevrons({ scrollRef }: Props): React.JSX.Element {
             startPress(-1)
           }}
           aria-label="Scroll left"
-          className={cn(base, 'left-2 outline-none')}
+          className={cn(base, SIZES[size].start, 'outline-none')}
         >
-          <ChevronLeftIcon className="size-4" />
+          <ChevronLeftIcon className={icon} />
         </button>
       ) : null}
       {canNext ? (
@@ -131,9 +159,9 @@ export function ScrollChevrons({ scrollRef }: Props): React.JSX.Element {
             startPress(1)
           }}
           aria-label="Scroll right"
-          className={cn(base, 'right-2 outline-none')}
+          className={cn(base, SIZES[size].end, 'outline-none')}
         >
-          <ChevronRightIcon className="size-4" />
+          <ChevronRightIcon className={icon} />
         </button>
       ) : null}
     </>
