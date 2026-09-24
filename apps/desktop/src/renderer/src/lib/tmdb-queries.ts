@@ -204,6 +204,7 @@ export const EXPLORE_TV_GENRES: ExploreGenre[] = [
 export const EXPLORE_SORTS = [
   { value: 'popular', label: 'Popular' },
   { value: 'top-rated', label: 'Top rated' },
+  { value: 'lowest-rated', label: 'Lowest rated' },
   { value: 'newest', label: 'New releases' }
 ] as const
 
@@ -226,6 +227,11 @@ export const discoverInfiniteQuery = (type: 'movie' | 'tv', sort: ExploreSort, g
     params.sort_by = 'popularity.desc'
   } else if (sort === 'top-rated') {
     params.sort_by = 'vote_average.desc'
+    params['vote_count.gte'] = 200
+  } else if (sort === 'lowest-rated') {
+    // Same vote floor as top rated, so the bottom is genuinely panned titles rather than
+    // obscure ones with two stray votes.
+    params.sort_by = 'vote_average.asc'
     params['vote_count.gte'] = 200
   } else {
     params.sort_by = `${dateField}.desc`
