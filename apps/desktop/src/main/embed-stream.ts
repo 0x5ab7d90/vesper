@@ -19,7 +19,7 @@ import { URL } from 'url'
 // host wants (a Referer for most, an Origin for some), so one proxy serves
 // every source site.
 
-const CHROME_UA =
+export const CHROME_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 const EMBED_TIMEOUT_MS = 25_000
 const EMBED_PARTITION = 'embed-intercept'
@@ -98,9 +98,40 @@ function fetchUpstream(
   })
 }
 
-function proxyUrlFor(absUrl: string, headers: UpstreamHeaders, kind: 'playlist' | 'seg'): string {
+// A segment may carry a second URL to try when the first one fails.
+function proxyUrlFor(
+  absUrl: string,
+  headers: UpstreamHeaders,
+  kind: 'playlist' | 'seg',
+  fallback?: string
+): string {
   const q = `t=${proxyToken}&h=${encodeHeaders(headers)}&u=${encodeURIComponent(absUrl)}`
-  return `http://127.0.0.1:${proxyPort}/${kind}?${q}`
+  const f = fallback ? `&f=${encodeURIComponent(fallback)}` : ''
+  return `http://127.0.0.1:${proxyPort}/${kind}?${q}${f}`
+}
+
+/** The URL a site's own relay stands in for, or null when it isn't one of its URLs. */
+export type RelayUnwrapper = (url: string) => string | null
+
+const relayUnwrappers: RelayUnwrapper[] = []
+
+/**
+ * Some sites hand out playlists only through their own relay, which then
+ * routes every segment through itself too, far slower than the segment hosts
+ * answer directly. A site registers how to read the real URL out of its
+ * relay's; segments then go straight to their host, with the relay kept as the
+ * fallback. Playlists stay on the relay: their hosts are the ones that refuse.
+ */
+export function registerRelayUnwrapper(unwrap: RelayUnwrapper): void {
+  relayUnwrappers.push(unwrap)
+}
+
+function unwrapRelay(url: string): string | null {
+  for (const unwrap of relayUnwrappers) {
+    const direct = unwrap(url)
+    if (direct) return direct
+  }
+  return null
 }
 
 function isMasterPlaylist(text: string): boolean {
@@ -121,8 +152,9 @@ function rewritePlaylist(text: string, baseUrl: string, headers: UpstreamHeaders
   const rewriteRef = (ref: string, playlist: boolean): string => {
     try {
       const abs = new URL(ref, baseUrl).toString()
-      const kind = playlist || M3U8_RE.test(abs) ? 'playlist' : 'seg'
-      return proxyUrlFor(abs, headers, kind)
+      if (playlist || M3U8_RE.test(abs)) return proxyUrlFor(abs, headers, 'playlist')
+      const direct = unwrapRelay(abs)
+      return direct ? proxyUrlFor(direct, headers, 'seg', abs) : proxyUrlFor(abs, headers, 'seg')
     } catch {
       return ref
     }
@@ -151,6 +183,55 @@ function readBody(res: IncomingMessage): Promise<string> {
     res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
     res.on('error', reject)
   })
+}
+
+// The first bytes of a response, with the rest left unread for piping.
+function readHead(res: IncomingMessage, limit: number): Promise<{ head: Buffer; ended: boolean }> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    const done = (ended: boolean): void => {
+      res.off('data', onData)
+      res.off('end', onEnd)
+      res.off('error', reject)
+      resolve({ head: Buffer.concat(chunks), ended })
+    }
+    const onData = (c: Buffer): void => {
+      chunks.push(c)
+      size += c.length
+      if (size >= limit) {
+        res.pause()
+        done(false)
+      }
+    }
+    const onEnd = (): void => done(true)
+    res.on('data', onData)
+    res.on('end', onEnd)
+    res.on('error', reject)
+  })
+}
+
+// Some hosts hide MPEG-TS segments behind a small image (a PNG on an image
+// CDN), which hls.js can't parse. Where a segment opens with an image
+// signature, the transport stream starts at the first run of sync bytes;
+// three packets must line up before it is believed.
+const DISGUISE_PEEK_BYTES = 64 * 1024
+const TS_PACKET = 188
+const IMAGE_SIGNATURES = [
+  Buffer.from([0x89, 0x50, 0x4e, 0x47]), // PNG
+  Buffer.from([0xff, 0xd8, 0xff]), // JPEG
+  Buffer.from('GIF8'),
+  Buffer.from('RIFF') // WebP
+]
+
+function disguisedTsStart(head: Buffer): number {
+  if (!IMAGE_SIGNATURES.some((sig) => head.subarray(0, sig.length).equals(sig))) return 0
+  for (let i = 1; i + TS_PACKET * 2 < head.length; i++) {
+    if (head[i] === 0x47 && head[i + TS_PACKET] === 0x47 && head[i + TS_PACKET * 2] === 0x47) {
+      return i
+    }
+  }
+  return 0
 }
 
 function baseResponseHeaders(): Record<string, string> {
@@ -185,7 +266,18 @@ async function handleProxyRequest(req: IncomingMessage, res: ServerResponse): Pr
     return
   }
   if (url.pathname === '/seg') {
-    const upstream = await fetchUpstream(target, headers)
+    const fallback = url.searchParams.get('f')
+    let upstream = await fetchUpstream(target, headers).catch((err: Error) => {
+      if (!fallback) throw err
+      return null
+    })
+    let source = target
+    if (fallback && (!upstream || (upstream.statusCode ?? 0) >= 400)) {
+      upstream?.resume()
+      upstream = await fetchUpstream(fallback, headers)
+      source = fallback
+    }
+    if (!upstream) throw new Error('upstream failed')
     // A reference we took for a segment can still turn out to be a playlist
     // (a proxy URL with nothing telling in it). The content type says so;
     // rewrite it rather than pipe it, or its own references escape the proxy.
@@ -196,15 +288,23 @@ async function handleProxyRequest(req: IncomingMessage, res: ServerResponse): Pr
           ...baseResponseHeaders(),
           'content-type': 'application/vnd.apple.mpegurl'
         })
-        .end(rewritePlaylist(body, target, headers))
+        .end(rewritePlaylist(body, source, headers))
       return
     }
+    const { head, ended } = await readHead(upstream, DISGUISE_PEEK_BYTES)
+    const start = disguisedTsStart(head)
     res.writeHead(upstream.statusCode ?? 502, {
       ...baseResponseHeaders(),
-      'content-type': upstream.headers['content-type'] ?? 'application/octet-stream'
+      'content-type':
+        start > 0 ? 'video/mp2t' : (upstream.headers['content-type'] ?? 'application/octet-stream')
     })
-    upstream.pipe(res)
+    res.write(start > 0 ? head.subarray(start) : head)
     upstream.on('error', () => res.destroy())
+    if (ended) {
+      res.end()
+      return
+    }
+    upstream.pipe(res)
     return
   }
   res.writeHead(404).end()
@@ -342,6 +442,18 @@ export async function proxiedPlaylistUrl(
 ): Promise<string> {
   await ensureProxy()
   return proxyUrlFor(playlistUrl, headers, 'playlist')
+}
+
+// A plain file (a subtitle track) the renderer can't fetch itself: its host is
+// outside the page's CSP, or wants headers. Piped through as-is, from the
+// fallback URL when the first one fails.
+export async function proxiedFileUrl(
+  fileUrl: string,
+  headers: UpstreamHeaders,
+  fallback?: string
+): Promise<string> {
+  await ensureProxy()
+  return proxyUrlFor(fileUrl, headers, 'seg', fallback)
 }
 
 export function stopEmbedProxy(): void {

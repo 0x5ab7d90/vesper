@@ -65,6 +65,18 @@ export function SubtitleOverlay({
       />
     )
   }
+  // A web source's own track is a file like any online one, only listed as the stream's.
+  if (selected.source === 'embedded' && selected.track.url) {
+    return (
+      <OnlineSubtitleOverlay
+        getCurrentTime={getCurrentTime}
+        url={selected.track.url}
+        style={style}
+        bottomGap={bottomGap}
+        offsetSec={offsetSec}
+      />
+    )
+  }
   if (selected.source === 'embedded' && getEmbeddedCues) {
     return (
       <EmbeddedSubtitleOverlay

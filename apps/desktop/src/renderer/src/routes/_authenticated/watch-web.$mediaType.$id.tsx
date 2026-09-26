@@ -33,6 +33,7 @@ import { useKeepAwake } from '@renderer/hooks/use-keep-awake'
 import { SubtitleMenu } from '@renderer/components/player/subtitle-menu'
 import { FlagTile } from '@renderer/components/player/flag-tile'
 import { SubtitleOverlay, type SelectedSub } from '@renderer/components/player/subtitle-overlay'
+import type { EmbeddedTrack } from '@renderer/lib/use-subtitle-tracks'
 import {
   readSubtitleStyle,
   writeSubtitleStyle,
@@ -163,9 +164,10 @@ function WatchWebPage(): React.JSX.Element {
   const [duration, setDuration] = useState(0)
   const [buffered, setBuffered] = useState<Array<{ start: number; end: number }>>([])
 
-  // Subtitles: online and local only — a web playlist carries no embedded
-  // tracks the app can read. Style and sync are the same prefs the VOD
-  // player keeps, so a viewer's setup carries across.
+  // Subtitles: online, local, and whatever files the row's site serves beside
+  // its stream (anime sites do; the playlist itself carries none the app can
+  // read). Style and sync are the same prefs the VOD player keeps, so a
+  // viewer's setup carries across.
   const [selectedSub, setSelectedSub] = useState<SelectedSub>(null)
   const [subStyle, setSubStyle] = useState<SubtitleStyle>(() => readSubtitleStyle())
   const [subOffsetSec, setSubOffsetSec] = useState(0)
@@ -233,6 +235,41 @@ function WatchWebPage(): React.JSX.Element {
     [streams, selectedId]
   )
 
+  const streamTracks = useMemo(() => (selected ? webTracks(selected) : []), [selected])
+
+  // A stream's own tracks belong to it. When one starts, the same language on
+  // it takes over from the last stream's; and until the viewer picks for
+  // themselves, a Japanese-audio stream starts with its English track on, as
+  // the site would.
+  const selectedSubRef = useRef<SelectedSub>(null)
+  useEffect(() => {
+    selectedSubRef.current = selectedSub
+  }, [selectedSub])
+  const pickedSubRef = useRef(false)
+  const pickSub = useCallback(
+    (sub: SelectedSub): void => {
+      pickedSubRef.current = true
+      selectSub(sub)
+    },
+    [selectSub]
+  )
+  const adoptStreamTracks = useCallback(
+    (stream: WebStream): void => {
+      const tracks = webTracks(stream)
+      const cur = selectedSubRef.current
+      if (cur?.source === 'embedded' && cur.track.source === 'web') {
+        const same = tracks.find((t) => t.lang === cur.track.lang)
+        selectSub(same ? { source: 'embedded', track: same } : null)
+        return
+      }
+      if (cur !== null || pickedSubRef.current || stream.lang !== 'ja') return
+      const english = tracks.filter((t) => t.lang === 'en')
+      const track = english.find((t) => stream.subtitles?.[t.index]?.default) ?? english[0]
+      if (track) selectSub({ source: 'embedded', track })
+    },
+    [selectSub]
+  )
+
   useEffect(() => {
     const video = videoRef.current
     const canvas = upscaleCanvasRef.current
@@ -275,6 +312,7 @@ function WatchWebPage(): React.JSX.Element {
       destroyHls()
       setPhase('loading')
       setSelectedId(stream.id)
+      adoptStreamTracks(stream)
       const video = videoRef.current
       if (!video) return
 
@@ -310,7 +348,7 @@ function WatchWebPage(): React.JSX.Element {
       hls.loadSource(stream.url)
       hls.attachMedia(video)
     },
-    [destroyHls]
+    [destroyHls, adoptStreamTracks]
   )
 
   // Start the row the picker chose as soon as its server has answered. Only
@@ -745,14 +783,14 @@ function WatchWebPage(): React.JSX.Element {
                   </IconButton>
                   <VolumeSlider value={muted ? 0 : volume} onChange={handleVolume} />
                 </div>
-                {search.imdbId ? (
+                {search.imdbId || streamTracks.length > 0 ? (
                   <SubtitleMenu
-                    embedded={[]}
+                    embedded={streamTracks}
                     selected={selectedSub}
-                    onSelect={selectSub}
+                    onSelect={pickSub}
                     style={subStyle}
                     onStyleChange={setSubStyle}
-                    imdbId={search.imdbId}
+                    imdbId={search.imdbId ?? ''}
                     mediaType={mediaType}
                     season={search.season}
                     episode={search.episode}
@@ -903,6 +941,18 @@ function ProgressBar({
       ) : null}
     </div>
   )
+}
+
+/** The subtitle files a row's site serves, as tracks the menu lists under the stream. */
+function webTracks(stream: WebStream): EmbeddedTrack[] {
+  return (stream.subtitles ?? []).map((s, i) => ({
+    id: `web:${i}`,
+    lang: s.lang,
+    label: s.label,
+    source: 'web',
+    index: i,
+    url: s.url
+  }))
 }
 
 function LoadingOverlay({ poster }: { poster?: string }): React.JSX.Element {

@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { cinejoy } from './cinejoy'
+import { closeMiruroPipe, miruro } from './miruro'
 import { movy } from './movy'
 import { rivestream } from './rivestream'
 import { stellar } from './stellar'
@@ -13,7 +14,12 @@ import type { WebSourceInput, WebSourceSite, WebStream } from './types'
 
 export type { WebSourceInput, WebStream } from './types'
 
-const SITES: WebSourceSite[] = [movy, rivestream, stellar, cinejoy]
+const SITES: WebSourceSite[] = [movy, rivestream, stellar, cinejoy, miruro]
+
+/** Hidden windows a site keeps open between calls; they must not outlive the app's own. */
+export function closeWebSourceWindows(): void {
+  closeMiruroPipe()
+}
 
 export async function listWebStreams(
   input: WebSourceInput,

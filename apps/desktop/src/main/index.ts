@@ -26,7 +26,7 @@ import icon from '../../resources/icon.png?asset'
 import iconMac from '../../resources/icon-mac.png?asset'
 import { registerEmbedStreams, stopEmbedProxy } from './embed-stream'
 import { registerKalshi } from './kalshi'
-import { registerWebSources } from './web-sources'
+import { closeWebSourceWindows, registerWebSources } from './web-sources'
 import { registerPower } from './power'
 import { registerImdbLists } from './imdb-lists'
 
@@ -326,6 +326,8 @@ function createWindow(): BrowserWindow {
   mainWindowRef = mainWindow
   mainWindow.on('closed', () => {
     if (mainWindowRef === mainWindow) mainWindowRef = null
+    // A hidden helper window would otherwise keep window-all-closed from firing.
+    closeWebSourceWindows()
   })
 
   mainWindow.webContents.once('did-finish-load', () => {
@@ -676,5 +678,6 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   stopRendererServer()
   stopEmbedProxy()
+  closeWebSourceWindows()
   void disconnectDiscord()
 })
