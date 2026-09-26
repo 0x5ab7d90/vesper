@@ -24,6 +24,8 @@ export interface WebStream {
   url: string
   /** Subtitle files the site serves alongside the stream, also through the proxy. */
   subtitles?: WebSubtitle[]
+  /** From an anime site: the picker marks it so. */
+  anime?: boolean
 }
 
 export interface WebSubtitle {

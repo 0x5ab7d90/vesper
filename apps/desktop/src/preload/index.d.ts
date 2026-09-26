@@ -26,6 +26,7 @@ export interface WebStream {
   quality: string
   url: string
   subtitles?: WebSubtitle[]
+  anime?: boolean
 }
 
 export interface WebSubtitle {
