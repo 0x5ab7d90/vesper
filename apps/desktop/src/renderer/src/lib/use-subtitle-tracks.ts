@@ -5,8 +5,10 @@ export interface EmbeddedTrack {
   id: string
   lang: string
   label: string
-  source: 'video' | 'hls'
+  /** "web": a subtitle file a web source serves beside its stream, fetched from `url`. */
+  source: 'video' | 'hls' | 'web'
   index: number
+  url?: string
 }
 
 export function useSubtitleTracks(

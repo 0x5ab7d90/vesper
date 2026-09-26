@@ -126,7 +126,11 @@ export function SubtitleMenu({
                 <SyncTab
                   offsetSec={offsetSec}
                   onChange={onOffsetChange}
-                  enabled={selected?.source === 'online' || selected?.source === 'local'}
+                  enabled={
+                    selected?.source === 'online' ||
+                    selected?.source === 'local' ||
+                    (selected?.source === 'embedded' && !!selected.track.url)
+                  }
                 />
               ) : null}
             </div>
@@ -326,7 +330,8 @@ function OnlineTab({
         videoHash,
         videoSize
       }),
-    enabled: hashSettled
+    // A web stream for a title TMDB has no IMDb id for still opens the menu for its own tracks.
+    enabled: hashSettled && imdbId !== ''
   })
 
   const grouped = useMemo(() => groupByLang(data ?? []), [data])

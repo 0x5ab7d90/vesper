@@ -25,6 +25,14 @@ export interface WebStream {
   lang: string
   quality: string
   url: string
+  subtitles?: WebSubtitle[]
+}
+
+export interface WebSubtitle {
+  lang: string
+  label: string
+  url: string
+  default?: boolean
 }
 
 export interface VesperApi {

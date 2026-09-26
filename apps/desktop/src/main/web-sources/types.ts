@@ -22,6 +22,17 @@ export interface WebStream {
   quality: string
   /** Playback URL through the local header proxy. */
   url: string
+  /** Subtitle files the site serves alongside the stream, also through the proxy. */
+  subtitles?: WebSubtitle[]
+}
+
+export interface WebSubtitle {
+  /** Subtitle-style language code, for the flag tile. */
+  lang: string
+  label: string
+  url: string
+  /** The one the site turns on by itself. */
+  default?: boolean
 }
 
 export interface WebSourceSite {
