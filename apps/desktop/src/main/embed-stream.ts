@@ -434,6 +434,88 @@ export async function upstreamAnswers(
   }
 }
 
+/**
+ * Whether a stream downloads faster than it plays: at the top quality playback
+ * locks to, its first segment and one a third of the way in must each arrive
+ * within their own duration. For hosts that fetch from upstream on demand,
+ * where an uncached episode answers promptly but trickles out slower than
+ * realtime and buffers every few seconds; the first segment alone is often
+ * cached when the rest isn't. Costs two segments of bandwidth.
+ */
+export async function streamKeepsUp(
+  playlistUrl: string,
+  headers: UpstreamHeaders
+): Promise<boolean> {
+  try {
+    let url = playlistUrl
+    let text = await readBody(await fetchUpstream(url, headers))
+    if (isMasterPlaylist(text)) {
+      // The variant with the highest bandwidth, as the player picks.
+      let best = { bandwidth: -1, ref: '' }
+      const lines = text.split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        const m = /^#EXT-X-STREAM-INF:.*?BANDWIDTH=(\d+)/.exec(lines[i])
+        const ref = lines[i + 1]?.trim()
+        if (m && ref && Number(m[1]) > best.bandwidth) best = { bandwidth: Number(m[1]), ref }
+      }
+      if (!best.ref) return false
+      url = new URL(best.ref, url).toString()
+      text = await readBody(await fetchUpstream(url, headers))
+    }
+    const segments: { duration: number; url: string }[] = []
+    const lines = text.split('\n')
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i].startsWith('#EXTINF:')) continue
+      const ref = lines.slice(i + 1).find((l) => l.trim() && !l.startsWith('#'))
+      const duration = parseFloat(lines[i].slice('#EXTINF:'.length))
+      if (!ref || !Number.isFinite(duration)) continue
+      const abs = new URL(ref.trim(), url).toString()
+      segments.push({ duration, url: unwrapRelay(abs) ?? abs })
+    }
+    if (segments.length === 0) return false
+    const probes = [segments[0], segments[Math.floor(segments.length / 3)]]
+    const results = await Promise.all(
+      [...new Set(probes)].map((s) => arrivesWithin(s.url, headers, s.duration * 1000))
+    )
+    return results.every(Boolean)
+  } catch {
+    return false
+  }
+}
+
+// The whole body, headers included, inside the budget.
+function arrivesWithin(url: string, headers: UpstreamHeaders, budgetMs: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let res: IncomingMessage | null = null
+    let settled = false
+    const finish = (ok: boolean): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      res?.destroy()
+      resolve(ok)
+    }
+    const timer = setTimeout(() => finish(false), budgetMs)
+    fetchUpstream(url, headers).then(
+      (r) => {
+        res = r
+        if (settled) {
+          r.destroy()
+          return
+        }
+        if ((r.statusCode ?? 0) >= 400) {
+          finish(false)
+          return
+        }
+        r.on('data', () => undefined)
+        r.on('end', () => finish(true))
+        r.on('error', () => finish(false))
+      },
+      () => finish(false)
+    )
+  })
+}
+
 // A playlist whose URL is already known (web sources, ADR-0019) skips the
 // hidden window and only needs the header proxy in front of it.
 export async function proxiedPlaylistUrl(
