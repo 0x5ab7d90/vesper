@@ -21,15 +21,13 @@ import {
   VolumeSlider
 } from '@renderer/components/player/hls-chrome'
 import {
-  fetchAllFightStreams,
-  fetchSiteFightStreams,
   fightMatchesQuery,
   fightPosterUrl,
   liveMatchesQuery,
-  rankStreams,
   streamKey,
   type FightStream
 } from '@renderer/lib/fights/api'
+import { useFightStreams } from '@renderer/lib/fights/use-fight-streams'
 import { useLiveDiscordPresence } from '@renderer/hooks/use-discord-presence'
 import { useKeepAwake } from '@renderer/hooks/use-keep-awake'
 
@@ -37,13 +35,19 @@ import { useKeepAwake } from '@renderer/hooks/use-keep-awake'
 // the engine has no manifest layer and its finite-duration chrome (seek bar,
 // progress saving) has no meaning here. Quality is locked to the top variant —
 // a struggling stream is escaped via the switcher, never by silent downgrade.
-// Streams come from streamed.st and from the other fight sites alike; an
-// automatic pick must prove it downloads faster than it plays, and one that
-// keeps stalling hands over to the next.
+// Streams come from streamed.st and from the other fight sites alike. The
+// viewer normally arrives with a stream picked (and already resolved) in the
+// streams menu; without one, the player picks for itself, and an automatic
+// pick must prove it downloads faster than it plays, and one that keeps
+// stalling hands over to the next.
 
 type SearchParams = {
   title: string
   poster?: string
+  /** The stream picked in the streams menu, by its key. */
+  stream?: string
+  /** That stream's playlist, already resolved by the menu. */
+  url?: string
 }
 
 export const Route = createFileRoute('/_authenticated/watch-fight/$id')({
@@ -51,7 +55,9 @@ export const Route = createFileRoute('/_authenticated/watch-fight/$id')({
     const s = search as Record<string, unknown>
     return {
       title: String(s.title ?? ''),
-      poster: s.poster ? String(s.poster) : undefined
+      poster: s.poster ? String(s.poster) : undefined,
+      stream: s.stream ? String(s.stream) : undefined,
+      url: s.url ? String(s.url) : undefined
     }
   },
   component: WatchFightPage
@@ -85,24 +91,7 @@ function WatchFightPage(): React.JSX.Element {
       null,
     [matches.data, liveMatches.data, params.id]
   )
-  const streamsQuery = useQuery({
-    queryKey: ['fights', 'all-streams', params.id],
-    queryFn: () => fetchAllFightStreams(match!),
-    enabled: !!match,
-    staleTime: 60_000,
-    refetchInterval: 120_000
-  })
-  const siteStreamsQuery = useQuery({
-    queryKey: ['fights', 'site-streams', params.id],
-    queryFn: () => fetchSiteFightStreams(match!),
-    enabled: !!match,
-    staleTime: 60_000,
-    refetchInterval: 120_000
-  })
-  const ranked = useMemo(
-    () => rankStreams([...(streamsQuery.data ?? []), ...(siteStreamsQuery.data ?? [])]),
-    [streamsQuery.data, siteStreamsQuery.data]
-  )
+  const { ranked, settled: listsSettled } = useFightStreams(match)
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const hlsRef = useRef<Hls | null>(null)
@@ -141,7 +130,7 @@ function WatchFightPage(): React.JSX.Element {
   >(null)
 
   const startStream = useCallback(
-    async (stream: FightStream, autoIndex: number | null): Promise<void> => {
+    async (stream: FightStream, autoIndex: number | null, resolvedUrl?: string): Promise<void> => {
       const attempt = ++attemptRef.current
       recoveredRef.current = false
       autoIndexRef.current = autoIndex
@@ -168,10 +157,12 @@ function WatchFightPage(): React.JSX.Element {
 
       let playlistUrl: string
       try {
-        playlistUrl = await window.api.embed.resolveStream(stream.embedUrl, {
-          referer: stream.referer,
-          strict: autoIndex !== null
-        })
+        playlistUrl =
+          resolvedUrl ??
+          (await window.api.embed.resolveStream(stream.embedUrl, {
+            referer: stream.referer,
+            strict: autoIndex !== null
+          }))
       } catch {
         failOver()
         return
@@ -218,16 +209,23 @@ function WatchFightPage(): React.JSX.Element {
     startStreamRef.current = startStream
   }, [startStream])
 
-  // Auto-pick the best stream once the list arrives.
+  // Every source came back empty — derived, so no state juggling.
+  const noStreams = listsSettled && ranked.length === 0
+
+  // Play the menu's pick as soon as its row is in the list (the menu's
+  // queries share these keys, so usually at once). Without one, or when the
+  // lists no longer carry it, pick the best stream automatically.
   const autoStartedRef = useRef(false)
   useEffect(() => {
     if (autoStartedRef.current || ranked.length === 0) return
+    const picked = search.url ? ranked.find((s) => streamKey(s) === search.stream) : undefined
+    if (search.url && !picked && !listsSettled) return
     autoStartedRef.current = true
-    void startStream(ranked[0], 0)
-  }, [ranked, startStream])
-
-  // Every source came back empty — derived, so no state juggling.
-  const noStreams = streamsQuery.isFetched && siteStreamsQuery.isFetched && ranked.length === 0
+    // Starting playback is what this effect is for; the phase and selection it
+    // sets on the way describe that start, once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void (picked ? startStream(picked, null, search.url) : startStream(ranked[0], 0))
+  }, [ranked, startStream, search.stream, search.url, listsSettled])
 
   // An automatic pick that keeps stalling moves down the ranking, the way one
   // that fails to start does. A viewer's own pick is left alone.
@@ -364,7 +362,11 @@ function WatchFightPage(): React.JSX.Element {
         <ErrorOverlay
           streams={ranked}
           selectedKey={selectedKey}
+          startsAt={match?.date}
           onPick={(s) => void startStream(s, null)}
+          onRetry={() => {
+            if (ranked.length > 0) void startStream(ranked[0], 0)
+          }}
           onBack={goBack}
         />
       ) : null}
@@ -502,15 +504,41 @@ function LoadingOverlay({ poster }: { poster?: string }): React.JSX.Element {
 function ErrorOverlay({
   streams,
   selectedKey,
+  startsAt,
   onPick,
+  onRetry,
   onBack
 }: {
   streams: FightStream[]
   selectedKey: string | null
+  /** Scheduled start, unix ms: before it, nothing playing yet is expected. */
+  startsAt?: number
   onPick: (s: FightStream) => void
+  /** Walk the ranking again from the top, as on arrival. */
+  onRetry: () => void
   onBack: () => void
 }): React.JSX.Element {
   const others = streams.filter((s) => streamKey(s) !== selectedKey)
+  // Read once, when the overlay appears; that is the moment it describes.
+  const [shownAt] = useState(() => Date.now())
+  const early = startsAt !== undefined && startsAt > shownAt
+  const startTime = early
+    ? new Date(startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : ''
+  const title = early
+    ? 'Not on yet'
+    : streams.length === 0
+      ? 'No streams yet'
+      : 'The stream ended or died'
+  const body = early
+    ? streams.length === 0
+      ? `No source is carrying this fight yet. It starts at ${startTime}.`
+      : `No stream is on the air yet. It starts at ${startTime}; try again closer to then, or pick a stream below.`
+    : streams.length === 0
+      ? 'No source is carrying this fight right now. Try again closer to the start.'
+      : others.length > 0
+        ? 'Pick another stream to keep watching.'
+        : 'No other streams are up for this fight.'
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/90">
       <div
@@ -518,16 +546,8 @@ function ErrorOverlay({
         style={{ backgroundColor: '#141414', ...squircleStyle('frame-sm') }}
       >
         <div className="flex flex-col gap-1">
-          <span className="text-[16px] leading-5 font-bold text-white">
-            {streams.length === 0 ? 'No streams yet' : 'The stream ended or died'}
-          </span>
-          <span className="text-[13px] leading-4 text-white/60">
-            {streams.length === 0
-              ? 'No source is carrying this fight right now. Try again closer to the start.'
-              : others.length > 0
-                ? 'Pick another stream to keep watching.'
-                : 'No other streams are up for this fight.'}
-          </span>
+          <span className="text-[16px] leading-5 font-bold text-white">{title}</span>
+          <span className="text-[13px] leading-4 text-white/60">{body}</span>
         </div>
         {others.length > 0 ? (
           <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto">
@@ -536,13 +556,24 @@ function ErrorOverlay({
             ))}
           </div>
         ) : null}
-        <button
-          type="button"
-          onClick={onBack}
-          className="self-start rounded-full bg-white/10 px-4 py-2 text-[13px] leading-4 font-medium text-white outline-none"
-        >
-          Back to home
-        </button>
+        <div className="flex items-center gap-2">
+          {early && streams.length > 0 ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-full bg-white/10 px-4 py-2 text-[13px] leading-4 font-medium text-white outline-none"
+            >
+              Try again
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onBack}
+            className="rounded-full bg-white/10 px-4 py-2 text-[13px] leading-4 font-medium text-white outline-none"
+          >
+            Back to home
+          </button>
+        </div>
       </div>
     </div>
   )

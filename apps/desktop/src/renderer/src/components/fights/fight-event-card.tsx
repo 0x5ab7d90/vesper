@@ -12,8 +12,7 @@ export interface FightEventCardProps {
 
 // A Fight is an event, not a title: the card is landscape like Continue
 // Watching, with the state pill (LIVE or start time) where the viewer's eye
-// lands first. An upcoming fight without a details page renders inert — the
-// pill already says when to come back.
+// lands first. Without an onClick the card renders inert.
 // Central Icons "people-versus" — the placeholder mark for fights without a poster.
 function VersusGlyph(): React.JSX.Element {
   return (

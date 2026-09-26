@@ -83,12 +83,8 @@ export function fightPosterUrl(match: FightMatch): string | undefined {
   return undefined
 }
 
-export function isUfcTitle(title: string): boolean {
-  return /\bufc\b|dana white|contender series|noche ufc/i.test(title)
-}
-
 /** How long after its start time a fight still counts as on. */
-export const FIGHT_LIVE_WINDOW_MS = 7 * 60 * 60_000
+const FIGHT_LIVE_WINDOW_MS = 7 * 60 * 60_000
 
 /**
  * Live by the live list, or by the clock: the list trails the start time and
@@ -139,6 +135,29 @@ export async function fetchSiteFightStreams(match: FightMatch): Promise<FightStr
     referer: r.referer,
     english: r.english
   }))
+}
+
+// A language or country named in a stream's label ("Spanish - Paramount+",
+// "Polsat Sport 1 Poland"), as the code the flag tile reads.
+const LANG_HINTS: Array<[RegExp, string]> = [
+  [/\b(spanish|spain)\b/i, 'es'],
+  [/\b(french|france|tva)\b/i, 'fr'],
+  [/\b(german|germany|deutsch)\b|\bDE\b/, 'de'],
+  [/\b(portuguese|portugal|brazil)\b/i, 'pt'],
+  [/\b(italian|italy)\b/i, 'it'],
+  [/\b(russian|russia)\b|[Ѐ-ӿ]/i, 'ru'],
+  [/\b(polish|poland|polsat)\b/i, 'pl'],
+  [/\b(arabic|arabia)\b/i, 'ar'],
+  [/\b(greek|greece|cyprus|cosmote)\b/i, 'el'],
+  [/\b(dutch|netherlands)\b/i, 'nl'],
+  [/\b(turkish|turkey)\b/i, 'tr']
+]
+
+/** The stream's audio language as a flag-tile code; null when nothing says. */
+export function fightStreamLang(s: FightStream): string | null {
+  for (const [re, code] of LANG_HINTS) if (re.test(s.language)) return code
+  if (s.english ?? /english/i.test(s.language)) return 'en'
+  return null
 }
 
 /** HD first, then English feeds, then whoever has the most viewers. */

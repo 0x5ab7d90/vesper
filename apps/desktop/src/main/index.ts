@@ -26,7 +26,6 @@ import icon from '../../resources/icon.png?asset'
 import iconMac from '../../resources/icon-mac.png?asset'
 import { registerEmbedStreams, stopEmbedProxy } from './embed-stream'
 import { registerFightSources } from './fight-sources'
-import { registerKalshi } from './kalshi'
 import { closeWebSourceWindows, registerWebSources } from './web-sources'
 import { registerPower } from './power'
 import { registerImdbLists } from './imdb-lists'
@@ -480,7 +479,6 @@ app.whenReady().then(() => {
 
   resetLegacyShortcutIcons()
   registerEmbedStreams()
-  registerKalshi()
   registerFightSources()
   registerWebSources()
   registerPower()

@@ -69,7 +69,6 @@ const api = {
       ipcRenderer.invoke('embed:resolveStream', embedUrl, options) as Promise<string>
   },
   fights: {
-    kalshiGet: (path: string) => ipcRenderer.invoke('fights:kalshiGet', path) as Promise<unknown>,
     listStreams: (input: unknown) =>
       ipcRenderer.invoke('fights:listStreams', input) as Promise<unknown[]>
   },
