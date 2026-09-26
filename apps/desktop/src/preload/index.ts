@@ -65,11 +65,13 @@ const api = {
       ipcRenderer.invoke('externalPlayer:open', id, url, positionSec) as Promise<void>
   },
   embed: {
-    resolveStream: (embedUrl: string) =>
-      ipcRenderer.invoke('embed:resolveStream', embedUrl) as Promise<string>
+    resolveStream: (embedUrl: string, options?: { referer?: string; strict?: boolean }) =>
+      ipcRenderer.invoke('embed:resolveStream', embedUrl, options) as Promise<string>
   },
   fights: {
-    kalshiGet: (path: string) => ipcRenderer.invoke('fights:kalshiGet', path) as Promise<unknown>
+    kalshiGet: (path: string) => ipcRenderer.invoke('fights:kalshiGet', path) as Promise<unknown>,
+    listStreams: (input: unknown) =>
+      ipcRenderer.invoke('fights:listStreams', input) as Promise<unknown[]>
   },
   imdb: {
     discoverLists: (imdbUserId: string) =>

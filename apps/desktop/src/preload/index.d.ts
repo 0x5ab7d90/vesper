@@ -36,6 +36,22 @@ export interface WebSubtitle {
   default?: boolean
 }
 
+export interface FightSourceInput {
+  title: string
+  date: number
+  sources: Array<{ source: string; id: string }>
+}
+
+export interface FightSiteStream {
+  id: string
+  site: string
+  label: string
+  hd: boolean
+  english: boolean
+  embedUrl: string
+  referer?: string
+}
+
 export interface VesperApi {
   window: {
     minimize: () => Promise<void>
@@ -79,11 +95,20 @@ export interface VesperApi {
     open: (id: 'vlc' | 'iina' | 'mpv', url: string, positionSec: number) => Promise<void>
   }
   embed: {
-    /** Playlist URL (via the local header proxy) for any https embed page. */
-    resolveStream: (embedUrl: string) => Promise<string>
+    /**
+     * Playlist URL (via the local header proxy) for any https embed page. `referer` is the page
+     * the embed expects to be framed by; `strict` also turns away a stream that downloads slower
+     * than it plays, not just one that doesn't answer.
+     */
+    resolveStream: (
+      embedUrl: string,
+      options?: { referer?: string; strict?: boolean }
+    ) => Promise<string>
   }
   fights: {
     kalshiGet: (path: string) => Promise<unknown>
+    /** Embed pages for an event on the fight sites beyond streamed.st, all asked at once. */
+    listStreams: (input: FightSourceInput) => Promise<FightSiteStream[]>
   }
   imdb: {
     /**

@@ -22,6 +22,7 @@ import {
 } from '@renderer/components/player/hls-chrome'
 import {
   fetchAllFightStreams,
+  fetchSiteFightStreams,
   fightMatchesQuery,
   fightPosterUrl,
   liveMatchesQuery,
@@ -36,6 +37,9 @@ import { useKeepAwake } from '@renderer/hooks/use-keep-awake'
 // the engine has no manifest layer and its finite-duration chrome (seek bar,
 // progress saving) has no meaning here. Quality is locked to the top variant —
 // a struggling stream is escaped via the switcher, never by silent downgrade.
+// Streams come from streamed.st and from the other fight sites alike; an
+// automatic pick must prove it downloads faster than it plays, and one that
+// keeps stalling hands over to the next.
 
 type SearchParams = {
   title: string
@@ -55,7 +59,10 @@ export const Route = createFileRoute('/_authenticated/watch-fight/$id')({
 
 const CHROME_HIDE_MS = 2500
 const VOLUME_KEY = 'vesper.player.volume'
-const MAX_AUTO_ATTEMPTS = 3
+const MAX_AUTO_ATTEMPTS = 5
+// Stalls inside this window before an automatic pick hands over to the next.
+const STALL_LIMIT = 3
+const STALL_WINDOW_MS = 60_000
 
 type Phase = 'loading' | 'playing' | 'error'
 
@@ -85,13 +92,27 @@ function WatchFightPage(): React.JSX.Element {
     staleTime: 60_000,
     refetchInterval: 120_000
   })
-  const ranked = useMemo(() => rankStreams(streamsQuery.data ?? []), [streamsQuery.data])
+  const siteStreamsQuery = useQuery({
+    queryKey: ['fights', 'site-streams', params.id],
+    queryFn: () => fetchSiteFightStreams(match!),
+    enabled: !!match,
+    staleTime: 60_000,
+    refetchInterval: 120_000
+  })
+  const ranked = useMemo(
+    () => rankStreams([...(streamsQuery.data ?? []), ...(siteStreamsQuery.data ?? [])]),
+    [streamsQuery.data, siteStreamsQuery.data]
+  )
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const hlsRef = useRef<Hls | null>(null)
   const attemptRef = useRef(0)
   const menuOpenRef = useRef(false)
   const recoveredRef = useRef(false)
+  // Where the playing stream sits in the ranking when it was picked
+  // automatically; null once the viewer has chosen.
+  const autoIndexRef = useRef<number | null>(null)
+  const stallsRef = useRef<number[]>([])
 
   const [phase, setPhase] = useState<Phase>('loading')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
@@ -123,6 +144,8 @@ function WatchFightPage(): React.JSX.Element {
     async (stream: FightStream, autoIndex: number | null): Promise<void> => {
       const attempt = ++attemptRef.current
       recoveredRef.current = false
+      autoIndexRef.current = autoIndex
+      stallsRef.current = []
       destroyHls()
       setPhase('loading')
       setSelectedKey(streamKey(stream))
@@ -145,7 +168,10 @@ function WatchFightPage(): React.JSX.Element {
 
       let playlistUrl: string
       try {
-        playlistUrl = await window.api.embed.resolveStream(stream.embedUrl)
+        playlistUrl = await window.api.embed.resolveStream(stream.embedUrl, {
+          referer: stream.referer,
+          strict: autoIndex !== null
+        })
       } catch {
         failOver()
         return
@@ -154,7 +180,15 @@ function WatchFightPage(): React.JSX.Element {
       const video = videoRef.current
       if (!video) return
 
-      const hls = new Hls({ enableWorker: true })
+      const hls = new Hls({
+        enableWorker: true,
+        // Four segments back from the live edge instead of three: a late
+        // segment from the host eats into this cushion, not into playback.
+        liveSyncDurationCount: 4,
+        liveMaxLatencyDurationCount: 10,
+        maxBufferLength: 30,
+        backBufferLength: 30
+      })
       hlsRef.current = hls
       hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
         let top = 0
@@ -193,7 +227,26 @@ function WatchFightPage(): React.JSX.Element {
   }, [ranked, startStream])
 
   // Every source came back empty — derived, so no state juggling.
-  const noStreams = streamsQuery.isSuccess && ranked.length === 0
+  const noStreams = streamsQuery.isFetched && siteStreamsQuery.isFetched && ranked.length === 0
+
+  // An automatic pick that keeps stalling moves down the ranking, the way one
+  // that fails to start does. A viewer's own pick is left alone.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const onWaiting = (): void => {
+      const index = autoIndexRef.current
+      if (index === null || video.seeking || video.paused || phase !== 'playing') return
+      const now = Date.now()
+      stallsRef.current = [...stallsRef.current.filter((t) => now - t < STALL_WINDOW_MS), now]
+      if (stallsRef.current.length < STALL_LIMIT) return
+      if (index + 1 < Math.min(ranked.length, MAX_AUTO_ATTEMPTS)) {
+        void startStreamRef.current?.(ranked[index + 1], index + 1)
+      }
+    }
+    video.addEventListener('waiting', onWaiting)
+    return () => video.removeEventListener('waiting', onWaiting)
+  }, [phase, ranked])
 
   useEffect(() => destroyHls, [destroyHls])
 
@@ -553,8 +606,8 @@ function StreamRow({
   active: boolean
   onClick: () => void
 }): React.JSX.Element {
-  const viewers =
-    stream.viewers !== undefined ? `${stream.viewers.toLocaleString()} watching` : null
+  const viewers = stream.viewers ? `${stream.viewers.toLocaleString()} watching` : null
+  const detail = [stream.site, viewers].filter(Boolean).join(' · ')
   return (
     <button
       type="button"
@@ -574,10 +627,8 @@ function StreamRow({
         >
           {stream.language}
         </span>
-        {viewers ? (
-          <span className="truncate text-[10px] leading-3 font-medium text-white/50">
-            {viewers}
-          </span>
+        {detail ? (
+          <span className="truncate text-[10px] leading-3 font-medium text-white/50">{detail}</span>
         ) : null}
       </div>
       {active ? (

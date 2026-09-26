@@ -37,6 +37,12 @@ export interface FightStream {
   embedUrl: string
   source: string
   viewers?: number
+  /** The site listing the stream, shown under it in the picker. */
+  site?: string
+  /** The page the embed expects to be framed by. */
+  referer?: string
+  /** Known from the site; otherwise read from `language`. */
+  english?: boolean
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -111,12 +117,33 @@ export async function fetchAllFightStreams(match: FightMatch): Promise<FightStre
       getJson<FightStream[]>(`/api/stream/${s.source}/${s.id}`).catch(() => [])
     )
   )
-  return lists.flat()
+  return lists.flat().map((s) => ({ ...s, site: 'Streamed' }))
+}
+
+/**
+ * The same event on the other fight sites, found by the main process: their
+ * pages carry no CORS headers, and some embeds want a Referer.
+ */
+export async function fetchSiteFightStreams(match: FightMatch): Promise<FightStream[]> {
+  const rows = await window.api.fights
+    .listStreams({ title: match.title, date: match.date, sources: match.sources })
+    .catch(() => [])
+  return rows.map((r) => ({
+    id: r.id,
+    streamNo: 0,
+    language: r.label,
+    hd: r.hd,
+    embedUrl: r.embedUrl,
+    source: r.site,
+    site: r.site,
+    referer: r.referer,
+    english: r.english
+  }))
 }
 
 /** HD first, then English feeds, then whoever has the most viewers. */
 export function rankStreams(streams: FightStream[]): FightStream[] {
-  const english = (s: FightStream): boolean => /english/i.test(s.language)
+  const english = (s: FightStream): boolean => s.english ?? /english/i.test(s.language)
   return [...streams].sort((a, b) => {
     if (a.hd !== b.hd) return a.hd ? -1 : 1
     if (english(a) !== english(b)) return english(a) ? -1 : 1
