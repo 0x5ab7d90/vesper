@@ -10,6 +10,7 @@ import { request as httpsRequest } from 'https'
 import { randomBytes } from 'crypto'
 import { PassThrough, Transform } from 'stream'
 import { URL } from 'url'
+import { constants as zlibConstants, gunzipSync, inflateSync } from 'zlib'
 
 // Embed pages — the fights source (ADR-0017) and the web players that carry
 // titles debrid refuses (ADR-0018) — only ever expose a playable URL by
@@ -23,6 +24,8 @@ import { URL } from 'url'
 export const CHROME_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 const EMBED_TIMEOUT_MS = 25_000
+// An automatic pick has the next stream to try; a good embed answers in a few seconds.
+const STRICT_EMBED_TIMEOUT_MS = 12_000
 const EMBED_PARTITION = 'embed-intercept'
 const M3U8_RE = /\.m3u8(\?|$)/i
 const HLS_CONTENT_TYPE_RE = /mpegurl/i
@@ -186,6 +189,17 @@ function readBody(res: IncomingMessage): Promise<string> {
   })
 }
 
+// What is left of a response readHead paused.
+function readRest(res: IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    res.on('data', (c: Buffer) => chunks.push(c))
+    res.on('end', () => resolve(Buffer.concat(chunks)))
+    res.on('error', reject)
+    res.resume()
+  })
+}
+
 // The first bytes of a response, with the rest left unread for piping.
 function readHead(res: IncomingMessage, limit: number): Promise<{ head: Buffer; ended: boolean }> {
   return new Promise((resolve, reject) => {
@@ -267,6 +281,99 @@ function unmask(head: Buffer): Disguise | null {
   return null
 }
 
+// One relay packs each segment into a PNG's pixels instead: unfiltered, the
+// image's bytes are a magic word, a length, and the MPEG-TS gzipped. Its first
+// row gives it away before the rest of the image has arrived.
+const PIXEL_MAGIC = Buffer.from('TIKTIKPX')
+// By colour type: greyscale, RGB, RGBA.
+const PNG_BYTES_PER_PIXEL: Record<number, number> = { 0: 1, 2: 3, 6: 4 }
+
+interface PngImage {
+  width: number
+  height: number
+  bpp: number
+  idat: Buffer
+}
+
+// The IDAT data present in `png`, which may stop partway through a chunk.
+function readPng(png: Buffer): PngImage | null {
+  if (!png.subarray(0, 8).equals(PNG_SIGNATURE)) return null
+  let width = 0
+  let height = 0
+  let bpp = 0
+  const idat: Buffer[] = []
+  for (let p = 8; p + 8 <= png.length; ) {
+    const len = png.readUInt32BE(p)
+    const type = png.toString('latin1', p + 4, p + 8)
+    const data = png.subarray(p + 8, Math.min(p + 8 + len, png.length))
+    if (type === 'IHDR' && data.length >= 13) {
+      width = data.readUInt32BE(0)
+      height = data.readUInt32BE(4)
+      // 8-bit greyscale, RGB or RGBA, not interlaced.
+      bpp = data[8] === 8 && data[12] === 0 ? (PNG_BYTES_PER_PIXEL[data[9]] ?? 0) : 0
+    } else if (type === 'IDAT') idat.push(data)
+    else if (type === 'IEND') break
+    p += 12 + len
+  }
+  if (!width || !height || !bpp || idat.length === 0) return null
+  return { width, height, bpp, idat: Buffer.concat(idat) }
+}
+
+// Undoes PNG's per-row filters, in place over the rows present.
+function unfilter(raw: Buffer, img: PngImage): Buffer {
+  const stride = img.width * img.bpp
+  const rows = Math.min(img.height, Math.floor(raw.length / (stride + 1)))
+  const out = Buffer.alloc(rows * stride)
+  for (let y = 0; y < rows; y++) {
+    const filter = raw[y * (stride + 1)]
+    const src = y * (stride + 1) + 1
+    const dst = y * stride
+    for (let x = 0; x < stride; x++) {
+      const a = x >= img.bpp ? out[dst + x - img.bpp] : 0
+      const b = y > 0 ? out[dst - stride + x] : 0
+      const c = y > 0 && x >= img.bpp ? out[dst - stride + x - img.bpp] : 0
+      let v = raw[src + x]
+      if (filter === 1) v += a
+      else if (filter === 2) v += b
+      else if (filter === 3) v += (a + b) >> 1
+      else if (filter === 4) {
+        const p = a + b - c
+        const pa = Math.abs(p - a)
+        const pb = Math.abs(p - b)
+        const pc = Math.abs(p - c)
+        v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c
+      }
+      out[dst + x] = v & 0xff
+    }
+  }
+  return out
+}
+
+function pixelPacked(head: Buffer): boolean {
+  const img = readPng(head)
+  if (!img) return false
+  try {
+    const raw = inflateSync(img.idat, { finishFlush: zlibConstants.Z_SYNC_FLUSH })
+    return unfilter(raw, { ...img, height: 1 })
+      .subarray(0, 8)
+      .equals(PIXEL_MAGIC)
+  } catch {
+    return false
+  }
+}
+
+function unpackPixels(png: Buffer): Buffer | null {
+  const img = readPng(png)
+  if (!img) return null
+  try {
+    const pixels = unfilter(inflateSync(img.idat), img)
+    if (!pixels.subarray(0, 8).equals(PIXEL_MAGIC)) return null
+    return gunzipSync(pixels.subarray(12, 12 + pixels.readUInt32BE(8)))
+  } catch {
+    return null
+  }
+}
+
 function xorStream(key: Uint8Array): Transform {
   let pos = 0
   return new Transform({
@@ -337,6 +444,12 @@ async function handleProxyRequest(req: IncomingMessage, res: ServerResponse): Pr
       return
     }
     const { head, ended } = await readHead(upstream, DISGUISE_PEEK_BYTES)
+    if (pixelPacked(head)) {
+      const ts = unpackPixels(ended ? head : Buffer.concat([head, await readRest(upstream)]))
+      if (!ts) throw new Error('pixel-packed segment did not unpack')
+      res.writeHead(200, { ...baseResponseHeaders(), 'content-type': 'video/mp2t' }).end(ts)
+      return
+    }
     const disguise = unmask(head)
     res.writeHead(upstream.statusCode ?? 502, {
       ...baseResponseHeaders(),
@@ -383,7 +496,28 @@ let embedQueue: Promise<unknown> = Promise.resolve()
 // they serve is ever the stream.
 const AD_HOST_RE = /doubleclick|adnxs|exoclick|propeller|popads|juicyads|gammaplatform|vcmdiawe/i
 
-function interceptPlaylist(embedUrl: string): Promise<string> {
+interface CaughtPlaylist {
+  url: string
+  headers: UpstreamHeaders
+}
+
+// Embeds nest: the player that asks for the playlist is often an iframe on a
+// third host, and the stream host checks for that host's Origin and Referer,
+// sometimes for the User-Agent its token was minted for. So playback replays
+// what the caught request itself carried, not a guess from the embed's URL.
+const REPLAYED_HEADER_RE = /^(origin|referer|user-agent)$/i
+
+function replayedHeaders(sent: Record<string, string>): UpstreamHeaders {
+  const out: UpstreamHeaders = {}
+  for (const [k, v] of Object.entries(sent)) if (REPLAYED_HEADER_RE.test(k) && v) out[k] = v
+  return out
+}
+
+function interceptPlaylist(
+  embedUrl: string,
+  referer: string | undefined,
+  timeoutMs: number
+): Promise<CaughtPlaylist> {
   const ses = session.fromPartition(EMBED_PARTITION)
   ses.setUserAgent(CHROME_UA)
   const win = new BrowserWindow({
@@ -405,29 +539,29 @@ function interceptPlaylist(embedUrl: string): Promise<string> {
 
   return new Promise((resolve, reject) => {
     let settled = false
-    const finish = (err: Error | null, playlistUrl?: string): void => {
+    const finish = (err: Error | null, caught?: CaughtPlaylist): void => {
       if (settled) return
       settled = true
       clearTimeout(timer)
-      ses.webRequest.onBeforeRequest(null)
+      ses.webRequest.onBeforeSendHeaders(null)
       ses.webRequest.onHeadersReceived(null)
       if (!win.isDestroyed()) win.destroy()
-      if (err) reject(err)
-      else resolve(playlistUrl ?? '')
+      if (err || !caught) reject(err ?? new Error('no playlist'))
+      else resolve(caught)
     }
-    const timer = setTimeout(
-      () => finish(new Error('timed out waiting for the stream')),
-      EMBED_TIMEOUT_MS
-    )
+    const timer = setTimeout(() => finish(new Error('timed out waiting for the stream')), timeoutMs)
     // Two tells for the playlist: most hosts name it .m3u8; tokenized proxies
     // don't, and only give themselves away by the content-type they answer with.
-    ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
+    // Either way the headers come from the request as it went out.
+    const sent = new Map<number, Record<string, string>>()
+    ses.webRequest.onBeforeSendHeaders({ urls: ['*://*/*'] }, (details, callback) => {
       if (M3U8_RE.test(details.url) && !AD_HOST_RE.test(details.url)) {
         callback({ cancel: true })
-        finish(null, details.url)
+        finish(null, { url: details.url, headers: replayedHeaders(details.requestHeaders) })
         return
       }
-      callback({})
+      sent.set(details.id, details.requestHeaders)
+      callback({ requestHeaders: details.requestHeaders })
     })
     ses.webRequest.onHeadersReceived({ urls: ['*://*/*'] }, (details, callback) => {
       const type = Object.entries(details.responseHeaders ?? {})
@@ -435,30 +569,63 @@ function interceptPlaylist(embedUrl: string): Promise<string> {
         ?.join(';')
       if (type && HLS_CONTENT_TYPE_RE.test(type) && !AD_HOST_RE.test(details.url)) {
         callback({ cancel: true })
-        finish(null, details.url)
+        const headers = sent.get(details.id) ?? { Referer: details.referrer }
+        finish(null, { url: details.url, headers: replayedHeaders(headers) })
         return
       }
+      sent.delete(details.id)
       callback({})
     })
     win.webContents.on('did-fail-load', (_e, _code, desc, _url, isMainFrame) => {
       if (isMainFrame) finish(new Error(`embed failed to load (${desc})`))
     })
-    win.loadURL(embedUrl).catch((err: Error) => finish(err))
+    // Some embeds refuse to play unless framed by the site that lists them.
+    win
+      .loadURL(embedUrl, referer ? { httpReferrer: referer } : undefined)
+      .catch((err: Error) => finish(err))
   })
 }
 
+export interface ResolveOptions {
+  /** The page the embed expects to be framed by. */
+  referer?: string
+  /**
+   * Only accept a stream that downloads faster than it plays. For automatic
+   * picks, where a slow stream should be passed over for the next one.
+   */
+  strict?: boolean
+}
+
+function validOptions(raw: unknown): ResolveOptions {
+  if (!raw || typeof raw !== 'object') return {}
+  const r = raw as Record<string, unknown>
+  const referer = typeof r.referer === 'string' && r.referer.startsWith('https://')
+  return { referer: referer ? (r.referer as string) : undefined, strict: r.strict === true }
+}
+
 export function registerEmbedStreams(): void {
-  ipcMain.handle('embed:resolveStream', async (_e, embedUrl: string): Promise<string> => {
-    if (typeof embedUrl !== 'string' || !embedUrl.startsWith('https://')) {
-      throw new Error('invalid embed url')
+  ipcMain.handle(
+    'embed:resolveStream',
+    async (_e, embedUrl: string, rawOptions: unknown): Promise<string> => {
+      if (typeof embedUrl !== 'string' || !embedUrl.startsWith('https://')) {
+        throw new Error('invalid embed url')
+      }
+      const options = validOptions(rawOptions)
+      const timeoutMs = options.strict ? STRICT_EMBED_TIMEOUT_MS : EMBED_TIMEOUT_MS
+      const run = embedQueue.then(() => interceptPlaylist(embedUrl, options.referer, timeoutMs))
+      embedQueue = run.catch(() => undefined)
+      const { url, headers } = await run
+      // A caught playlist can still be dead: a channel that isn't on air yet
+      // answers 404, and the player would only find out after the handoff.
+      const usable = options.strict
+        ? await streamKeepsUp(url, headers, { live: true })
+        : await upstreamAnswers(url, headers)
+      if (!usable)
+        throw new Error(options.strict ? 'stream is too slow' : 'stream is not answering')
+      await ensureProxy()
+      return proxyUrlFor(url, headers, 'playlist')
     }
-    const headers = { Referer: `${new URL(embedUrl).origin}/` }
-    const run = embedQueue.then(() => interceptPlaylist(embedUrl))
-    embedQueue = run.catch(() => undefined)
-    const playlistUrl = await run
-    await ensureProxy()
-    return proxyUrlFor(playlistUrl, headers, 'playlist')
-  })
+  )
 }
 
 // Whether a playlist answers at all, with the same headers playback will send.
@@ -479,6 +646,9 @@ export async function upstreamAnswers(
   }
 }
 
+// The share of a live segment's duration its download may take.
+const LIVE_SEGMENT_BUDGET = 0.75
+
 /**
  * Whether a stream downloads faster than it plays: at the top quality playback
  * locks to, its first segment and one a third of the way in must each arrive
@@ -486,10 +656,15 @@ export async function upstreamAnswers(
  * where an uncached episode answers promptly but trickles out slower than
  * realtime and buffers every few seconds; the first segment alone is often
  * cached when the rest isn't. Costs two segments of bandwidth.
+ *
+ * A live stream is timed on its newest segment instead, since playback keeps
+ * fetching at the edge, and must beat its duration by a margin: live playback
+ * has no buffer to spend while a slow segment catches up. Costs one segment.
  */
 export async function streamKeepsUp(
   playlistUrl: string,
-  headers: UpstreamHeaders
+  headers: UpstreamHeaders,
+  { live = false }: { live?: boolean } = {}
 ): Promise<boolean> {
   try {
     let url = playlistUrl
@@ -518,9 +693,12 @@ export async function streamKeepsUp(
       segments.push({ duration, url: unwrapRelay(abs) ?? abs })
     }
     if (segments.length === 0) return false
-    const probes = [segments[0], segments[Math.floor(segments.length / 3)]]
+    const probes = live
+      ? [segments[segments.length - 1]]
+      : [segments[0], segments[Math.floor(segments.length / 3)]]
+    const budget = live ? LIVE_SEGMENT_BUDGET : 1
     const results = await Promise.all(
-      [...new Set(probes)].map((s) => arrivesWithin(s.url, headers, s.duration * 1000))
+      [...new Set(probes)].map((s) => arrivesWithin(s.url, headers, s.duration * 1000 * budget))
     )
     return results.every(Boolean)
   } catch {
