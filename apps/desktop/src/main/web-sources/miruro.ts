@@ -290,6 +290,26 @@ async function findEpisode(
   return found.find((f) => f !== null) ?? null
 }
 
+/**
+ * The AniList entry and episode a TMDB episode is, for the other anime sites
+ * keyed on the same ids. Miruro's mapping is the one source that knows where a
+ * split cour starts inside a TMDB season; when it can't be asked or has no
+ * answer, ARM's first entry stands, with the episode as TMDB numbers it.
+ */
+export async function resolveAnilistEpisode(
+  input: WebSourceInput
+): Promise<{ anilistId: number; episode: number } | null> {
+  try {
+    const match = await findEpisode(input)
+    if (match) return { anilistId: match.anilistId, episode: match.number }
+  } catch (err) {
+    console.warn('[web-sources] miruro mapping failed:', (err as Error).message)
+  }
+  const [first] = await anilistCandidates(input)
+  if (first === undefined) return null
+  return { anilistId: first, episode: input.mediaType === 'movie' ? 1 : (input.episode ?? 1) }
+}
+
 // ── Streams ─────────────────────────────────────────────────────────────────
 
 function xorBase64url(text: string, key: Buffer): string {
