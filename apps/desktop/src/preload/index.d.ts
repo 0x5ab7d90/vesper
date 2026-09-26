@@ -106,7 +106,6 @@ export interface VesperApi {
     ) => Promise<string>
   }
   fights: {
-    kalshiGet: (path: string) => Promise<unknown>
     /** Embed pages for an event on the fight sites beyond streamed.st, all asked at once. */
     listStreams: (input: FightSourceInput) => Promise<FightSiteStream[]>
   }

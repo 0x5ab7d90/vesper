@@ -3,20 +3,21 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { ScrollSection } from '@renderer/components/ui/scroll-section'
 import { FightEventCard } from './fight-event-card'
+import { FightStreamPicker } from './fight-stream-picker'
 import {
   fightMatchesQuery,
   fightPosterUrl,
   isFightLive,
   isFightToday,
-  isUfcTitle,
   liveMatchesQuery,
+  streamKey,
   type FightMatch
 } from '@renderer/lib/fights/api'
-import { matchEspnEvent, ufcScoreboardQuery, type EspnEvent } from '@renderer/lib/fights/espn'
 
 // The Fights row: live fights first, then today's upcoming ones. It renders
 // nothing at all on quiet days or when the source is down — the homepage never
-// shows an empty shelf for it.
+// shows an empty shelf for it. A card opens the fight's streams in the picker,
+// before the start time too: streams often go up early.
 export function FightsSection(): React.JSX.Element | null {
   const navigate = useNavigate()
   const matches = useQuery(fightMatchesQuery())
@@ -46,71 +47,56 @@ export function FightsSection(): React.JSX.Element | null {
     ]
   }, [matches.data, liveMatches.data, now])
 
-  const anyUfc = rows.some((r) => isUfcTitle(r.match.title))
-  const scoreboard = useQuery({ ...ufcScoreboardQuery(now), enabled: anyUfc })
+  // The picked fight stays set while the dialog closes, so its title doesn't
+  // blank out mid-animation.
+  const [picking, setPicking] = useState<FightMatch | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   if (rows.length === 0) return null
 
   return (
-    <ScrollSection title="Fights">
-      {rows.map(({ match, live }) => (
-        <FightRowCard
-          key={match.id}
-          match={match}
-          live={live}
-          espnEvents={scoreboard.data ?? []}
-          onWatch={() =>
-            void navigate({
-              to: '/watch-fight/$id',
-              params: { id: match.id },
-              search: { title: match.title, poster: fightPosterUrl(match) },
-              viewTransition: false
-            })
-          }
-          onDetails={(espnId) =>
-            void navigate({
-              to: '/fights/$id',
-              params: { id: match.id },
-              search: { espnId },
-              viewTransition: false
-            })
-          }
-        />
-      ))}
-    </ScrollSection>
-  )
-}
-
-function FightRowCard({
-  match,
-  live,
-  espnEvents,
-  onWatch,
-  onDetails
-}: {
-  match: FightMatch
-  live: boolean
-  espnEvents: EspnEvent[]
-  onWatch: () => void
-  onDetails: (espnId: string) => void
-}): React.JSX.Element {
-  const espnEvent = isUfcTitle(match.title) ? matchEspnEvent(match, espnEvents) : null
-
-  // UFC events with a matched card are clickable anytime; everything else is
-  // watchable when live and inert until then.
-  const onClick = espnEvent ? () => onDetails(espnEvent.id) : live ? onWatch : undefined
-
-  const timeLabel = live
-    ? undefined
-    : new Date(match.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-
-  return (
-    <FightEventCard
-      title={match.title}
-      poster={fightPosterUrl(match)}
-      live={live}
-      timeLabel={timeLabel}
-      onClick={onClick}
-    />
+    <>
+      <ScrollSection title="Fights">
+        {rows.map(({ match, live }) => (
+          <FightEventCard
+            key={match.id}
+            title={match.title}
+            poster={fightPosterUrl(match)}
+            live={live}
+            timeLabel={
+              live
+                ? undefined
+                : new Date(match.date).toLocaleTimeString([], {
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })
+            }
+            onClick={() => {
+              setPicking(match)
+              setPickerOpen(true)
+            }}
+          />
+        ))}
+      </ScrollSection>
+      <FightStreamPicker
+        match={picking}
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onPicked={({ stream, url }) => {
+          if (!picking) return
+          void navigate({
+            to: '/watch-fight/$id',
+            params: { id: picking.id },
+            search: {
+              title: picking.title,
+              poster: fightPosterUrl(picking),
+              stream: streamKey(stream),
+              url
+            },
+            viewTransition: false
+          })
+        }}
+      />
+    </>
   )
 }

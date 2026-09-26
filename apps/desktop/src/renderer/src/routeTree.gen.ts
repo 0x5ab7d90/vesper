@@ -24,7 +24,6 @@ import { Route as AuthenticatedWatchFightIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedTvIdRouteImport } from './routes/_authenticated/tv.$id'
 import { Route as AuthenticatedMovieIdRouteImport } from './routes/_authenticated/movie.$id'
 import { Route as AuthenticatedListIdRouteImport } from './routes/_authenticated/list.$id'
-import { Route as AuthenticatedFightsIdRouteImport } from './routes/_authenticated/fights.$id'
 import { Route as AuthenticatedWatchMediaTypeIdRouteImport } from './routes/_authenticated/watch.$mediaType.$id'
 import { Route as AuthenticatedWatchWebMediaTypeIdRouteImport } from './routes/_authenticated/watch-web.$mediaType.$id'
 
@@ -103,11 +102,6 @@ const AuthenticatedListIdRoute = AuthenticatedListIdRouteImport.update({
   path: '/list/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedFightsIdRoute = AuthenticatedFightsIdRouteImport.update({
-  id: '/fights/$id',
-  path: '/fights/$id',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedWatchMediaTypeIdRoute =
   AuthenticatedWatchMediaTypeIdRouteImport.update({
     id: '/watch/$mediaType/$id',
@@ -132,7 +126,6 @@ export interface FileRoutesByFullPath {
   '/friends': typeof AuthenticatedFriendsRoute
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/fights/$id': typeof AuthenticatedFightsIdRoute
   '/list/$id': typeof AuthenticatedListIdRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/tv/$id': typeof AuthenticatedTvIdRoute
@@ -151,7 +144,6 @@ export interface FileRoutesByTo {
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
-  '/fights/$id': typeof AuthenticatedFightsIdRoute
   '/list/$id': typeof AuthenticatedListIdRoute
   '/movie/$id': typeof AuthenticatedMovieIdRoute
   '/tv/$id': typeof AuthenticatedTvIdRoute
@@ -172,7 +164,6 @@ export interface FileRoutesById {
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/fights/$id': typeof AuthenticatedFightsIdRoute
   '/_authenticated/list/$id': typeof AuthenticatedListIdRoute
   '/_authenticated/movie/$id': typeof AuthenticatedMovieIdRoute
   '/_authenticated/tv/$id': typeof AuthenticatedTvIdRoute
@@ -193,7 +184,6 @@ export interface FileRouteTypes {
     | '/friends'
     | '/search'
     | '/settings'
-    | '/fights/$id'
     | '/list/$id'
     | '/movie/$id'
     | '/tv/$id'
@@ -212,7 +202,6 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/'
-    | '/fights/$id'
     | '/list/$id'
     | '/movie/$id'
     | '/tv/$id'
@@ -232,7 +221,6 @@ export interface FileRouteTypes {
     | '/_authenticated/search'
     | '/_authenticated/settings'
     | '/_authenticated/'
-    | '/_authenticated/fights/$id'
     | '/_authenticated/list/$id'
     | '/_authenticated/movie/$id'
     | '/_authenticated/tv/$id'
@@ -355,13 +343,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedListIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/fights/$id': {
-      id: '/_authenticated/fights/$id'
-      path: '/fights/$id'
-      fullPath: '/fights/$id'
-      preLoaderRoute: typeof AuthenticatedFightsIdRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/watch/$mediaType/$id': {
       id: '/_authenticated/watch/$mediaType/$id'
       path: '/watch/$mediaType/$id'
@@ -387,7 +368,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedFightsIdRoute: typeof AuthenticatedFightsIdRoute
   AuthenticatedListIdRoute: typeof AuthenticatedListIdRoute
   AuthenticatedMovieIdRoute: typeof AuthenticatedMovieIdRoute
   AuthenticatedTvIdRoute: typeof AuthenticatedTvIdRoute
@@ -404,7 +384,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedFightsIdRoute: AuthenticatedFightsIdRoute,
   AuthenticatedListIdRoute: AuthenticatedListIdRoute,
   AuthenticatedMovieIdRoute: AuthenticatedMovieIdRoute,
   AuthenticatedTvIdRoute: AuthenticatedTvIdRoute,

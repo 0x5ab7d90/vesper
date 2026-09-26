@@ -23,7 +23,7 @@ function ZapIcon({ className }: { className?: string }): React.JSX.Element {
 }
 
 // Central Icons "globe" (filled) — the web counterpart of the zap.
-function GlobeIcon({ className }: { className?: string }): React.JSX.Element {
+export function GlobeIcon({ className }: { className?: string }): React.JSX.Element {
   return (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       <path
@@ -84,7 +84,8 @@ import { resolveStreamUrl, type StreamContext } from '@renderer/lib/resolve-stre
 import { squircleStyle } from '@renderer/components/ui/squircle-surface'
 import { useWebStreams, webQualityLabel, type WebStream } from '@renderer/lib/web-sources'
 import { FlagTile } from './flag-tile'
-import { EASE_OUT, EXIT_FADE } from '@renderer/lib/motion'
+import { CHIP_CLASS, ROW_ANIM, ROW_CLASS } from './picker-rows'
+import { EXIT_FADE } from '@renderer/lib/motion'
 
 const POP = { type: 'spring', stiffness: 400, damping: 26 } as const
 
@@ -106,7 +107,31 @@ interface StreamPickerProps {
 
 export function StreamPicker(props: StreamPickerProps): React.JSX.Element {
   return (
-    <Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
+    <PickerFrame open={props.open} onOpenChange={props.onOpenChange} title={props.title}>
+      <PickerBody {...props} />
+    </PickerFrame>
+  )
+}
+
+/**
+ * The picker's surface: a dialog holding a squircle frame, the title with a
+ * close button, and the recessed inset its content scrolls in. Anything that
+ * lists sources to pick from wears it (titles here, live fights elsewhere).
+ * Children mount only while open, so their queries start with the dialog.
+ */
+export function PickerFrame({
+  open,
+  onOpenChange,
+  title,
+  children
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
         <Dialog.Popup
@@ -123,7 +148,26 @@ export function StreamPicker(props: StreamPickerProps): React.JSX.Element {
             style={squircleStyle('frame')}
           >
             <DitherCorner />
-            {props.open ? <PickerBody {...props} /> : null}
+            {open ? (
+              <div className="relative flex h-full min-h-0 flex-col">
+                <div className="shrink-0 pt-1.5 pb-1.5">
+                  <div className="flex items-center justify-between pl-2.5 pr-1">
+                    <h2 className="min-w-0 truncate text-[15px] leading-4 font-medium text-text">
+                      {title}
+                    </h2>
+                    <Dialog.Close className="flex size-7 items-center justify-center rounded-full text-text-muted outline-none hover:bg-white/[0.08] hover:text-white">
+                      <CloseIcon className="size-3.5" />
+                    </Dialog.Close>
+                  </div>
+                </div>
+                <div
+                  className="flex min-h-0 flex-1 flex-col bg-surface shadow-edge-soft"
+                  style={squircleStyle('inset')}
+                >
+                  {children}
+                </div>
+              </div>
+            ) : null}
           </motion.div>
         </Dialog.Popup>
       </Dialog.Portal>
@@ -235,84 +279,71 @@ function PickerBody(props: StreamPickerProps): React.JSX.Element {
   const emptyText = webOnly ? 'No web source carries this one.' : 'No streams found.'
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
-      <div className="shrink-0 pt-1.5 pb-1.5">
-        <div className="flex items-center justify-between pl-2.5 pr-1">
-          <h2 className="min-w-0 truncate text-[15px] leading-4 font-medium text-text">{title}</h2>
-          <Dialog.Close className="flex size-7 items-center justify-center rounded-full text-text-muted outline-none hover:bg-white/[0.08] hover:text-white">
-            <CloseIcon className="size-3.5" />
-          </Dialog.Close>
-        </div>
-      </div>
-      <div
-        className="flex min-h-0 flex-1 flex-col bg-surface shadow-edge-soft"
-        style={squircleStyle('inset')}
-      >
-        {/* The sort tabs live inside the inset: its solid surface keeps them legible under
+    <>
+      {/* The sort tabs live inside the inset: its solid surface keeps them legible under
             the frame's dither, and the list reads as one panel with its controls. */}
-        <Segmented<StreamSort>
-          className="mx-1.5 mt-1.5 shrink-0"
-          value={effectiveSort}
-          onChange={handleSortChange}
-          options={webEnabled ? STREAM_SORTS : STREAM_SORTS.filter((s) => s.value !== 'web')}
-        />
-        <SkeletonSwap
-          ready={!loading}
-          reserve="auto"
-          label="Sources"
-          className="scroll-hide min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 py-1.5"
-          skeleton={
-            <div className="flex flex-col gap-0.5">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <SkeletonRow key={i} />
-              ))}
-            </div>
-          }
-        >
+      <Segmented<StreamSort>
+        className="mx-1.5 mt-1.5 shrink-0"
+        value={effectiveSort}
+        onChange={handleSortChange}
+        options={webEnabled ? STREAM_SORTS : STREAM_SORTS.filter((s) => s.value !== 'web')}
+      />
+      <SkeletonSwap
+        ready={!loading}
+        reserve="auto"
+        label="Sources"
+        className="scroll-hide min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 py-1.5"
+        skeleton={
           <div className="flex flex-col gap-0.5">
-            {/* A pick that did not take is a standing condition until the next one, so it
-                sits above the list rather than passing by as a toast. */}
-            {pickError ? (
-              <div
-                role="status"
-                className="mx-0.5 mb-1 rounded-[10px] bg-white/[0.05] px-3 py-2 text-[12px] leading-4 text-text"
-              >
-                {pickError}
-              </div>
-            ) : null}
-            {failed ? (
-              <p className="px-3 py-6 text-center text-[13px] text-text-muted">{failedText}</p>
-            ) : null}
-            {!loading && !failed && items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-[13px] text-text-muted">{emptyText}</p>
-            ) : null}
-            <AnimatePresence initial={false} mode="popLayout">
-              {items.map((item) =>
-                item.kind === 'cached' ? (
-                  <Row
-                    key={item.key}
-                    stream={item.stream}
-                    selected={item.key === selectedId}
-                    busy={resolving && item.key === selectedId}
-                    onClick={() => void handlePick(item.stream)}
-                  />
-                ) : (
-                  <WebRow
-                    key={item.key}
-                    stream={item.stream}
-                    onClick={() => handlePickWeb(item.stream)}
-                  />
-                )
-              )}
-            </AnimatePresence>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <SkeletonRow key={i} />
+            ))}
           </div>
-        </SkeletonSwap>
-      </div>
-    </div>
+        }
+      >
+        <div className="flex flex-col gap-0.5">
+          {/* A pick that did not take is a standing condition until the next one, so it
+                sits above the list rather than passing by as a toast. */}
+          {pickError ? (
+            <div
+              role="status"
+              className="mx-0.5 mb-1 rounded-[10px] bg-white/[0.05] px-3 py-2 text-[12px] leading-4 text-text"
+            >
+              {pickError}
+            </div>
+          ) : null}
+          {failed ? (
+            <p className="px-3 py-6 text-center text-[13px] text-text-muted">{failedText}</p>
+          ) : null}
+          {!loading && !failed && items.length === 0 ? (
+            <p className="px-3 py-6 text-center text-[13px] text-text-muted">{emptyText}</p>
+          ) : null}
+          <AnimatePresence initial={false} mode="popLayout">
+            {items.map((item) =>
+              item.kind === 'cached' ? (
+                <Row
+                  key={item.key}
+                  stream={item.stream}
+                  selected={item.key === selectedId}
+                  busy={resolving && item.key === selectedId}
+                  onClick={() => void handlePick(item.stream)}
+                />
+              ) : (
+                <WebRow
+                  key={item.key}
+                  stream={item.stream}
+                  onClick={() => handlePickWeb(item.stream)}
+                />
+              )
+            )}
+          </AnimatePresence>
+        </div>
+      </SkeletonSwap>
+    </>
   )
 }
 
-function SkeletonRow(): React.JSX.Element {
+export function SkeletonRow(): React.JSX.Element {
   return (
     <div className="flex items-center justify-between gap-2.5 rounded-[10px] py-2.5 pr-3 pl-2.5">
       <div className="flex min-w-0 grow items-center gap-2.5">
@@ -323,14 +354,6 @@ function SkeletonRow(): React.JSX.Element {
     </div>
   )
 }
-
-const ROW_ANIM = { duration: 0.18, ease: EASE_OUT }
-
-const ROW_CLASS =
-  'flex items-center justify-between gap-2.5 rounded-[10px] py-2.5 pr-3 pl-2.5 text-left outline-none transition-colors'
-
-const CHIP_CLASS =
-  'flex h-5 w-14 shrink-0 items-center justify-center rounded-md bg-white/[0.08] text-[11px] leading-3.5 font-medium tracking-[0.02em] text-text'
 
 function Row({
   stream,
