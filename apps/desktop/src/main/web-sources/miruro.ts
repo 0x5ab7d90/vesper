@@ -447,7 +447,8 @@ async function fetchVariant(
       lang: audio === 'dub' ? 'en' : 'ja',
       quality: 'Auto',
       url: await proxiedPlaylistUrl(r.url, r.headers),
-      subtitles: subtitles.length > 0 ? subtitles : undefined
+      subtitles: subtitles.length > 0 ? subtitles : undefined,
+      anime: true
     })
   }
   return out

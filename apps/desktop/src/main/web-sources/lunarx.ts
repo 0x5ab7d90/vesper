@@ -362,7 +362,8 @@ async function zenRows(anilistId: number, episode: number): Promise<WebStream[]>
     lang: audio === 'dub' ? 'en' : 'ja',
     quality: 'Auto',
     url,
-    subtitles
+    subtitles,
+    anime: true
   }))
 }
 
@@ -442,7 +443,8 @@ async function hostRows(
       quality: 'Auto',
       url: await proxiedPlaylistUrl(playlist, headers),
       // Subtitle files come through the site's own API, which refuses any Origin.
-      subtitles: await subtitlesFor(tracks, withoutOrigin(headers))
+      subtitles: await subtitlesFor(tracks, withoutOrigin(headers)),
+      anime: true
     }
   ]
 }

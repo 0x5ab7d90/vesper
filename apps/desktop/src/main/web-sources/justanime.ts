@@ -101,7 +101,8 @@ async function rowsFor(
       lang: audio === 'dub' ? 'en' : 'ja',
       quality: 'Auto',
       url: await proxiedPlaylistUrl(c.url, c.headers),
-      subtitles: subtitles.length > 0 ? subtitles : undefined
+      subtitles: subtitles.length > 0 ? subtitles : undefined,
+      anime: true
     })
   }
   return out
