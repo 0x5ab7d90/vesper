@@ -8,6 +8,7 @@ import {
 } from 'http'
 import { request as httpsRequest } from 'https'
 import { randomBytes } from 'crypto'
+import { PassThrough, Transform } from 'stream'
 import { URL } from 'url'
 
 // Embed pages — the fights source (ADR-0017) and the web players that carry
@@ -211,27 +212,71 @@ function readHead(res: IncomingMessage, limit: number): Promise<{ head: Buffer; 
   })
 }
 
-// Some hosts hide MPEG-TS segments behind a small image (a PNG on an image
-// CDN), which hls.js can't parse. Where a segment opens with an image
-// signature, the transport stream starts at the first run of sync bytes;
-// three packets must line up before it is believed.
+// Some hosts hide MPEG-TS segments behind an image, which hls.js can't parse:
+// a whole small PNG ahead of the stream on an image CDN, or a bare PNG or WebP
+// signature ahead of a stream that is also XORed with a fixed key. Where a
+// segment opens with an image signature, the stream starts right after the
+// signature (plain, or under a key a site registered) or at the first run of
+// sync bytes; either way three packets must line up before it is believed.
 const DISGUISE_PEEK_BYTES = 64 * 1024
 const TS_PACKET = 188
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 const IMAGE_SIGNATURES = [
-  Buffer.from([0x89, 0x50, 0x4e, 0x47]), // PNG
+  PNG_SIGNATURE.subarray(0, 4),
   Buffer.from([0xff, 0xd8, 0xff]), // JPEG
   Buffer.from('GIF8'),
   Buffer.from('RIFF') // WebP
 ]
 
-function disguisedTsStart(head: Buffer): number {
-  if (!IMAGE_SIGNATURES.some((sig) => head.subarray(0, sig.length).equals(sig))) return 0
-  for (let i = 1; i + TS_PACKET * 2 < head.length; i++) {
-    if (head[i] === 0x47 && head[i + TS_PACKET] === 0x47 && head[i + TS_PACKET * 2] === 0x47) {
-      return i
-    }
+const segmentKeys: Uint8Array[] = []
+
+/** A key some site XORs its disguised segments with, tried after the image signature. */
+export function registerSegmentKey(key: ArrayLike<number>): void {
+  segmentKeys.push(Uint8Array.from(key))
+}
+
+interface Disguise {
+  start: number
+  key: Uint8Array | null
+}
+
+function tsRunAt(buf: Buffer, at: number, key: Uint8Array | null): boolean {
+  for (let k = 0; k < 3; k++) {
+    const i = at + k * TS_PACKET
+    if (i >= buf.length) return false
+    if ((buf[i] ^ (key ? key[(i - at) % key.length] : 0)) !== 0x47) return false
   }
-  return 0
+  return true
+}
+
+function unmask(head: Buffer): Disguise | null {
+  if (!IMAGE_SIGNATURES.some((sig) => head.subarray(0, sig.length).equals(sig))) return null
+  const bare = head.subarray(0, 8).equals(PNG_SIGNATURE)
+    ? 8
+    : head.subarray(8, 12).toString('latin1') === 'WEBP'
+      ? 12
+      : 0
+  if (bare > 0) {
+    if (tsRunAt(head, bare, null)) return { start: bare, key: null }
+    const key = segmentKeys.find((k) => tsRunAt(head, bare, k))
+    if (key) return { start: bare, key }
+  }
+  for (let i = 1; i + TS_PACKET * 2 < head.length; i++) {
+    if (tsRunAt(head, i, null)) return { start: i, key: null }
+  }
+  return null
+}
+
+function xorStream(key: Uint8Array): Transform {
+  let pos = 0
+  return new Transform({
+    transform(chunk: Buffer, _enc, done): void {
+      const out = Buffer.from(chunk)
+      for (let i = 0; i < out.length; i++) out[i] ^= key[(pos + i) % key.length]
+      pos += out.length
+      done(null, out)
+    }
+  })
 }
 
 function baseResponseHeaders(): Record<string, string> {
@@ -292,19 +337,19 @@ async function handleProxyRequest(req: IncomingMessage, res: ServerResponse): Pr
       return
     }
     const { head, ended } = await readHead(upstream, DISGUISE_PEEK_BYTES)
-    const start = disguisedTsStart(head)
+    const disguise = unmask(head)
     res.writeHead(upstream.statusCode ?? 502, {
       ...baseResponseHeaders(),
-      'content-type':
-        start > 0 ? 'video/mp2t' : (upstream.headers['content-type'] ?? 'application/octet-stream')
+      'content-type': disguise
+        ? 'video/mp2t'
+        : (upstream.headers['content-type'] ?? 'application/octet-stream')
     })
-    res.write(start > 0 ? head.subarray(start) : head)
+    const out = disguise?.key ? xorStream(disguise.key) : new PassThrough()
+    out.pipe(res)
+    out.write(disguise ? head.subarray(disguise.start) : head)
     upstream.on('error', () => res.destroy())
-    if (ended) {
-      res.end()
-      return
-    }
-    upstream.pipe(res)
+    if (ended) out.end()
+    else upstream.pipe(out)
     return
   }
   res.writeHead(404).end()

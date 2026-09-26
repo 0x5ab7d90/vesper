@@ -34,6 +34,7 @@ import { SubtitleMenu } from '@renderer/components/player/subtitle-menu'
 import { FlagTile } from '@renderer/components/player/flag-tile'
 import { SubtitleOverlay, type SelectedSub } from '@renderer/components/player/subtitle-overlay'
 import type { EmbeddedTrack } from '@renderer/lib/use-subtitle-tracks'
+import { toIso1 } from '@renderer/lib/lang'
 import {
   readSubtitleStyle,
   writeSubtitleStyle,
@@ -332,6 +333,10 @@ function WatchWebPage(): React.JSX.Element {
           if ((data.levels[i].bitrate ?? 0) > (data.levels[top].bitrate ?? 0)) top = i
         }
         hls.currentLevel = top
+        // A playlist carrying several audio tracks (a dual-audio release)
+        // plays the one the row promised: Japanese for a sub, English for a dub.
+        const audio = hls.audioTracks.findIndex((t) => toIso1(t.lang ?? '') === stream.lang)
+        if (hls.audioTracks.length > 1 && audio !== -1) hls.audioTrack = audio
         if (resumeSec > 0) video.currentTime = resumeSec
         void video.play().catch(() => undefined)
         if (attempt === attemptRef.current) setPhase('playing')

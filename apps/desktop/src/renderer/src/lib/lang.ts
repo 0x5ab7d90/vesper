@@ -150,7 +150,8 @@ const LABEL_OVERRIDE: Record<string, string> = {
 
 const LANG_NAMES_DISPLAY = new Intl.DisplayNames(['en'], { type: 'language' })
 
-function toIso1(lang: string): string | undefined {
+/** A two- or three-letter language code as its two-letter form ("jpn" → "ja"). */
+export function toIso1(lang: string): string | undefined {
   const k = lang.toLowerCase()
   if (k.length === 2) return k
   return ISO3_TO_ISO1[k]
