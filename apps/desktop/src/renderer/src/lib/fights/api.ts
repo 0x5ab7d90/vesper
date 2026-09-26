@@ -81,6 +81,19 @@ export function isUfcTitle(title: string): boolean {
   return /\bufc\b|dana white|contender series|noche ufc/i.test(title)
 }
 
+/** How long after its start time a fight still counts as on. */
+export const FIGHT_LIVE_WINDOW_MS = 7 * 60 * 60_000
+
+/**
+ * Live by the live list, or by the clock: the list trails the start time and
+ * can skip an event whose streams aren't up yet, and a fight must not drop off
+ * the shelf in that gap. Bogus dates (years back) fall outside the window.
+ */
+export function isFightLive(match: FightMatch, liveIds: Set<string>, now = Date.now()): boolean {
+  if (liveIds.has(match.id)) return true
+  return match.date <= now && now - match.date < FIGHT_LIVE_WINDOW_MS
+}
+
 export function isFightToday(match: FightMatch, now = Date.now()): boolean {
   const d = new Date(match.date)
   const n = new Date(now)
