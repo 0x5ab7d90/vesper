@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { ScrollSection } from '@renderer/components/ui/scroll-section'
@@ -6,6 +6,7 @@ import { FightEventCard } from './fight-event-card'
 import {
   fightMatchesQuery,
   fightPosterUrl,
+  isFightLive,
   isFightToday,
   isUfcTitle,
   liveMatchesQuery,
@@ -21,20 +22,32 @@ export function FightsSection(): React.JSX.Element | null {
   const matches = useQuery(fightMatchesQuery())
   const liveMatches = useQuery(liveMatchesQuery())
 
+  // Re-read the clock every half minute so a fight flips to live at its start
+  // time, not at the next refetch.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
   const rows = useMemo(() => {
-    const all = matches.data ?? []
-    const live = new Set(
-      (liveMatches.data ?? []).filter((m) => m.category === 'fight').map((m) => m.id)
-    )
-    const liveRows = all.filter((m) => live.has(m.id))
+    const liveFights = (liveMatches.data ?? []).filter((m) => m.category === 'fight')
+    const liveIds = new Set(liveFights.map((m) => m.id))
+    // A live fight the fight list doesn't carry still belongs on the shelf.
+    const all = [...(matches.data ?? [])]
+    for (const m of liveFights) if (!all.some((x) => x.id === m.id)) all.push(m)
+    const liveRows = all.filter((m) => isFightLive(m, liveIds, now))
     const upcoming = all
-      .filter((m) => !live.has(m.id) && isFightToday(m) && m.date > Date.now())
+      .filter((m) => !isFightLive(m, liveIds, now) && isFightToday(m, now) && m.date > now)
       .sort((a, b) => a.date - b.date)
-    return [...liveRows, ...upcoming].map((m) => ({ match: m, live: live.has(m.id) }))
-  }, [matches.data, liveMatches.data])
+    return [
+      ...liveRows.map((m) => ({ match: m, live: true })),
+      ...upcoming.map((m) => ({ match: m, live: false }))
+    ]
+  }, [matches.data, liveMatches.data, now])
 
   const anyUfc = rows.some((r) => isUfcTitle(r.match.title))
-  const scoreboard = useQuery({ ...ufcScoreboardQuery(Date.now()), enabled: anyUfc })
+  const scoreboard = useQuery({ ...ufcScoreboardQuery(now), enabled: anyUfc })
 
   if (rows.length === 0) return null
 

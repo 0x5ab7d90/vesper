@@ -7,7 +7,9 @@ import { SkeletonSwap } from '@renderer/components/ui/skeleton-swap'
 import { KalshiMarketChart } from '@renderer/components/fights/kalshi-market-chart'
 import {
   fightMatchesQuery,
+  FIGHT_LIVE_WINDOW_MS,
   fightPosterUrl,
+  isFightLive,
   liveMatchesQuery,
   type FightMatch
 } from '@renderer/lib/fights/api'
@@ -41,8 +43,6 @@ export const Route = createFileRoute('/_authenticated/fights/$id')({
   component: FightCardPage
 })
 
-const LIVE_WINDOW_MS = 7 * 60 * 60_000
-
 function FightCardPage(): React.JSX.Element {
   const params = Route.useParams()
   const search = Route.useSearch()
@@ -54,7 +54,9 @@ function FightCardPage(): React.JSX.Element {
     () => (matches.data ?? []).find((m) => m.id === params.id) ?? null,
     [matches.data, params.id]
   )
-  const live = (liveMatches.data ?? []).some((m) => m.id === params.id)
+  const live = match
+    ? isFightLive(match, new Set((liveMatches.data ?? []).map((m) => m.id)))
+    : false
 
   // Deep links arrive without a pre-matched ESPN id — re-match from the
   // scoreboard around the event's date.
@@ -68,7 +70,7 @@ function FightCardPage(): React.JSX.Element {
 
   // Poll the card while the event could be in progress so results land live.
   const inLiveWindow =
-    !!match && Date.now() >= match.date && Date.now() - match.date < LIVE_WINDOW_MS
+    !!match && Date.now() >= match.date && Date.now() - match.date < FIGHT_LIVE_WINDOW_MS
   const fightCenter = useQuery({
     ...fightCenterQuery(espnId ?? '', live || inLiveWindow),
     enabled: !!espnId
